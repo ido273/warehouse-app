@@ -23,6 +23,7 @@ class Box(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     location = db.Column(db.String(255))
+    code = db.Column(db.String(10), unique=True, nullable=False, default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     items = db.relationship("Item", backref="box", lazy=True)
@@ -30,10 +31,20 @@ class Box(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "code": self.code,
             "name": self.name,
             "location": self.location,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+    @staticmethod
+    def _generate_code(mapper, connection, target):
+        connection.execute(
+            mapper.persist_selectable.update()
+            .where(mapper.persist_selectable.c.id == target.id)
+            .values(code=f"B{target.id:03d}")
+        )
+        target.code = f"B{target.id:03d}"
 
 
 class Item(db.Model):
@@ -42,6 +53,7 @@ class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     category = db.Column(db.String(255))
+    code = db.Column(db.String(10), unique=True, nullable=False, default="")
     box_id = db.Column(db.Integer, db.ForeignKey("boxes.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -50,12 +62,27 @@ class Item(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "code": self.code,
             "name": self.name,
             "category": self.category,
             "box_id": self.box_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "tags": [t.name for t in self.tags],
         }
+
+    @staticmethod
+    def _generate_code(mapper, connection, target):
+        connection.execute(
+            mapper.persist_selectable.update()
+            .where(mapper.persist_selectable.c.id == target.id)
+            .values(code=f"I{target.id:03d}")
+        )
+        target.code = f"I{target.id:03d}"
+
+
+from sqlalchemy import event
+event.listen(Box, "after_insert", Box._generate_code)
+event.listen(Item, "after_insert", Item._generate_code)
 
 
 class Tag(db.Model):
@@ -111,12 +138,12 @@ def get_box_qr(box_id):
     from PIL import Image, ImageDraw, ImageFont
 
     box = db.get_or_404(Box, box_id)
-    qr_data = f"box:{box.id}:{box.name}"
+    qr_data = f"box:{box.code}:{box.name}"
     qr_img = qrcode.make(qr_data).convert("RGB")
 
     qr_w, qr_h = qr_img.size
     font = ImageFont.load_default(size=20)
-    label = f"ID: {box.id} | {box.name}"
+    label = f"ID: {box.code} | {box.name}"
     banner_h = 40
 
     combined = Image.new("RGB", (qr_w, qr_h + banner_h), "white")
