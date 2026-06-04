@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Box {{ box.code }} · {{ box.name }} — WarehouseMS{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+  <i class="fa-solid fa-chevron-right"></i>
+  <span>{{ box.name }}</span>
+</div>
+
+{% if box.image %}
+<div class="lightbox-trigger" style="margin-bottom:1.25rem;"
+     data-src="/uploads/{{ box.image }}" data-alt="{{ box.name | e }}">
+  <img src="/uploads/{{ box.image }}" alt="{{ box.name }}"
+       style="width:100%;max-height:320px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border);">
+</div>
+{% endif %}
+
+<div class="detail-header" style="position:relative;">
+  <div class="detail-icon"><i class="fa-solid fa-box"></i></div>
+
+  <div class="detail-info">
+    <div><span class="code-chip">{{ box.code }}</span></div>
+    <div class="detail-title">{{ box.name }}</div>
+    <div class="detail-meta">
+      {% if box.location %}
+      <span><i class="fa-solid fa-location-dot"></i>{{ box.location }}</span>
+      {% endif %}
+      <span><i class="fa-solid fa-cubes"></i>{{ items | length }} item{{ 's' if items | length != 1 }}</span>
+      <span><i class="fa-solid fa-calendar"></i>{{ box.created_at[:10] if box.created_at else '—' }}</span>
+    </div>
+  </div>
+
+  <div class="qr-card">
+    <div class="qr-label"><i class="fa-solid fa-qrcode"></i> QR Code</div>
+    <img src="/api/boxes/{{ box.id }}/qr" alt="QR code for {{ box.name }}" loading="lazy">
+    <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);">{{ box.code }}</div>
+  </div>
+
+  <!-- Edit button for the box -->
+  <button class="card-menu-btn"
+          style="opacity:1;position:absolute;top:1rem;right:1rem;width:32px;height:32px;font-size:0.85rem;"
+          data-type="box"
+          data-id="{{ box.id }}"
+          data-name="{{ box.name | e }}"
+          data-location="{{ (box.location or '') | e }}"
+          data-image="{{ box.image or '' }}"
+          onclick="openCardMenu(event, this)"
+          title="Options">
+    <i class="fa-solid fa-ellipsis-vertical"></i>
+  </button>
+</div>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Items in this Box</div>
+    <div class="page-subtitle">{{ items | length }} item{{ 's' if items | length != 1 }}</div>
+  </div>
+  <div class="view-toggle">
+    <button class="view-btn active" data-view="grid" data-container="viewContainer"
+            onclick="setView('grid','viewContainer')" title="Grid view">
+      <i class="fa-solid fa-grip"></i>
+    </button>
+    <button class="view-btn" data-view="list" data-container="viewContainer"
+            onclick="setView('list','viewContainer')" title="List view">
+      <i class="fa-solid fa-list"></i>
+    </button>
+  </div>
+</div>
+
+{% if items %}
+<div class="grid grid-3" id="viewContainer">
+  {% for item in items %}
+  <div class="card-wrap">
+    <a href="/items/{{ item.id }}" style="text-decoration:none;color:inherit;display:block;">
+      <div class="card">
+        <div class="card-main">
+          <div class="card-icon" style="{% if item.image %}overflow:hidden;padding:0;{% endif %}">
+            {% if item.image %}
+            <img src="/uploads/{{ item.image }}" alt="{{ item.name }}"
+                 style="width:100%;height:100%;object-fit:cover;border-radius:10px;">
+            {% else %}
+            <i class="fa-solid fa-cube"></i>
+            {% endif %}
+          </div>
+          <div class="card-body">
+            <div class="code-chip">{{ item.code }}</div>
+            <div class="card-title">{{ item.name }}</div>
+            {% if item.category %}
+            <div style="margin-top:0.2rem;">
+              <span class="badge badge-accent"><i class="fa-solid fa-tag"></i> {{ item.category }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% if item.tags %}
+        <div class="card-right" style="flex-wrap:wrap;">
+          {% for tag in item.tags %}
+          <span class="tag">{{ tag }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </a>
+    <button class="card-menu-btn"
+            data-type="item"
+            data-id="{{ item.id }}"
+            data-name="{{ item.name | e }}"
+            data-category="{{ (item.category or '') | e }}"
+            data-location="{{ (item.location or '') | e }}"
+            data-box-id="{{ item.box_id or '' }}"
+            data-tags='{{ item.tags | tojson }}'
+            data-image="{{ item.image or '' }}"
+            onclick="openCardMenu(event, this)"
+            title="Options">
+      <i class="fa-solid fa-ellipsis-vertical"></i>
+    </button>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fa-solid fa-cubes-stacked"></i>
+  <p>No items in this box yet — click <strong style="color:var(--accent);">+</strong> to add one!</p>
+</div>
+{% endif %}
+{% endblock %}

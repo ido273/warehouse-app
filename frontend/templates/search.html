@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{% if q %}Search: {{ q }}{% else %}Search{% endif %} — WarehouseMS{% endblock %}
+
+{% block content %}
+<div class="search-hero" style="padding: 2rem 0 1.75rem;">
+  <h1>Search</h1>
+  <p>Search items by name, category, or tag</p>
+  <form class="search-bar" action="/search" method="get" role="search">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" name="q" placeholder="Search items…"
+           value="{{ q }}" autocomplete="off" autofocus>
+    <button type="submit">Search</button>
+  </form>
+</div>
+
+{% if q %}
+<div class="page-header">
+  <div>
+    <div class="page-title">
+      {% if results %}
+        {{ results | length }} result{{ 's' if results | length != 1 }} for
+        "<span style="color:var(--accent);">{{ q }}</span>"
+      {% else %}
+        No results for "<span style="color:var(--accent);">{{ q }}</span>"
+      {% endif %}
+    </div>
+    <div class="page-subtitle">Searching items by name, category, and tags</div>
+  </div>
+  {% if results %}
+  <div class="view-toggle">
+    <button class="view-btn active" data-view="grid" data-container="viewContainer"
+            onclick="setView('grid','viewContainer')" title="Grid view">
+      <i class="fa-solid fa-grip"></i>
+    </button>
+    <button class="view-btn" data-view="list" data-container="viewContainer"
+            onclick="setView('list','viewContainer')" title="List view">
+      <i class="fa-solid fa-list"></i>
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if results %}
+<div class="grid grid-3" id="viewContainer">
+  {% for item in results %}
+  <a href="/items/{{ item.id }}" style="text-decoration:none;color:inherit;display:block;">
+    <div class="card">
+      <div class="card-main">
+        <div class="card-icon"><i class="fa-solid fa-cube"></i></div>
+        <div class="card-body">
+          <div class="code-chip">{{ item.code }}</div>
+          <div class="card-title">{{ item.name }}</div>
+          {% if item.category %}
+          <div style="margin-top:0.2rem;">
+            <span class="badge badge-accent"><i class="fa-solid fa-tag"></i> {{ item.category }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-right">
+        {% for tag in item.tags %}
+        <span class="tag">{{ tag }}</span>
+        {% endfor %}
+        {% if not item.tags %}
+        <span class="badge badge-gray"><i class="fa-solid fa-clock"></i> {{ item.created_at[:10] if item.created_at else '—' }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fa-solid fa-circle-xmark"></i>
+  <p>No items match "<strong>{{ q }}</strong>" — try a different keyword.</p>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <p>Enter a term above to search across all items, categories, and tags.</p>
+</div>
+{% endif %}
+{% endblock %}

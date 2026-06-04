@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}WarehouseMS{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --bg: #2b2d42;
+      --surface: #1e1e2e;
+      --surface2: #252538;
+      --accent: #7c6af7;
+      --accent-hover: #6a58e5;
+      --accent-glow: rgba(124, 106, 247, 0.35);
+      --text: #e0e0f0;
+      --muted: #8888aa;
+      --border: rgba(124, 106, 247, 0.18);
+      --radius: 12px;
+      --nav-h: 62px;
+      --sidebar-w: 272px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    .navbar {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 1.25rem;
+      gap: 0.75rem;
+      z-index: 100;
+      box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .hamburger {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 8px;
+      transition: background 0.2s, color 0.2s;
+      line-height: 1;
+    }
+    .hamburger:hover { background: rgba(124,106,247,0.12); color: var(--accent); }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      letter-spacing: -0.01em;
+    }
+    .logo i { font-size: 1.05rem; }
+
+    .nav-spacer { flex: 1; }
+
+    .nav-search {
+      display: flex;
+      align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.4rem 0.9rem;
+      gap: 0.5rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .nav-search:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,247,0.12);
+    }
+    .nav-search i { color: var(--muted); font-size: 0.82rem; }
+    .nav-search input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 0.875rem;
+      width: 210px;
+    }
+    .nav-search input::placeholder { color: var(--muted); }
+
+    /* ── SIDEBAR ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 90;
+      backdrop-filter: blur(2px);
+    }
+    .overlay.show { display: block; }
+
+    .sidebar {
+      position: fixed;
+      top: var(--nav-h);
+      left: 0;
+      width: var(--sidebar-w);
+      height: calc(100vh - var(--nav-h));
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      transform: translateX(-100%);
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 95;
+      overflow-y: auto;
+      padding: 0.75rem 0 2rem;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    .sidebar-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      padding: 0.5rem 1.25rem 0.4rem;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.6rem 1.25rem;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
+      border-left: 3px solid transparent;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sidebar-link:hover {
+      background: rgba(124, 106, 247, 0.1);
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+    .sidebar-link.active {
+      background: rgba(124, 106, 247, 0.13);
+      color: var(--accent);
+      border-left-color: var(--accent);
+      font-weight: 600;
+    }
+    .sidebar-link i {
+      width: 17px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      transition: color 0.18s;
+      flex-shrink: 0;
+    }
+    .sidebar-link:hover i,
+    .sidebar-link.active i { color: var(--accent); }
+
+    .sidebar-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0.5rem 1.25rem;
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-top: var(--nav-h);
+      padding: 2rem 2.25rem;
+      max-width: 1280px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+      transition: transform 0.22s ease, box-shadow 0.22s ease;
+    }
+    a:hover > .card,
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 28px var(--accent-glow), 0 6px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ── GRID ── */
+    .grid { display: grid; gap: 1rem; }
+    .grid-3 { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+
+    /* ── LIST VIEW ── */
+    .list-view { grid-template-columns: 1fr !important; }
+    .list-view .card {
+      display: flex;
+      align-items: center;
+      padding: 0.8rem 1.2rem;
+    }
+    .list-view .card-main { flex: 1; min-width: 0; }
+    .list-view .card-right { margin-top: 0; margin-left: 1rem; flex-shrink: 0; }
+    .list-view .card-icon { width: 36px; height: 36px; font-size: 0.95rem; }
+
+    /* ── CARD INTERNALS ── */
+    .card-main {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      margin-bottom: 0.6rem;
+    }
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(124, 106, 247, 0.13);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: var(--accent);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    a:hover .card-icon { background: rgba(124, 106, 247, 0.22); }
+    .card-body { min-width: 0; }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 0.2rem;
+    }
+    .card-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+      margin-top: 0.6rem;
+    }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+    }
+    .badge-accent { background: rgba(124,106,247,0.18); color: var(--accent); }
+    .badge-gray   { background: rgba(255,255,255,0.07); color: var(--muted); }
+    .badge-green  { background: rgba(76,175,80,0.18);   color: #81c784; }
+
+    .code-chip {
+      font-family: 'Courier New', monospace;
+      font-size: 0.77rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(124, 106, 247, 0.12);
+      padding: 0.12rem 0.5rem;
+      border-radius: 5px;
+      border: 1px solid rgba(124,106,247,0.22);
+      display: inline-block;
+    }
+
+    .tag {
+      display: inline-block;
+      background: rgba(124, 106, 247, 0.13);
+      color: #a89cf7;
+      font-size: 0.7rem;
+      padding: 0.18rem 0.5rem;
+      border-radius: 999px;
+      margin: 0.1rem;
+    }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px var(--accent-glow);
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      z-index: 50;
+    }
+    .fab:hover {
+      transform: scale(1.1) rotate(45deg);
+      background: var(--accent-hover);
+      box-shadow: 0 6px 30px var(--accent-glow);
+    }
+
+    /* ── VIEW TOGGLE ── */
+    .view-toggle {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.2rem;
+      gap: 0.15rem;
+    }
+    .view-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 0.38rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.18s, color 0.18s;
+    }
+    .view-btn.active { background: var(--accent); color: white; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-ghost:hover { background: rgba(124,106,247,0.08); color: var(--accent); }
+
+    /* ── MODAL ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(3px);
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 460px;
+      max-width: 95vw;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+      animation: modal-in 0.22s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .modal-title { font-size: 1.05rem; font-weight: 700; }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: 6px;
+      transition: color 0.18s;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 0.22rem;
+      margin-bottom: 1.4rem;
+      gap: 0.2rem;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 0.5rem;
+      border: none;
+      background: none;
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: all 0.18s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+    .tab-btn.active { background: var(--accent); color: white; }
+
+    /* ── FORM ── */
+    .form-group { margin-bottom: 1rem; }
+    .form-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      color: var(--text);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,247,0.14);
+    }
+    .form-input option { background: var(--surface); }
+    .form-input::placeholder { color: var(--muted); }
+
+    /* ── IMAGE UPLOAD ── */
+    .img-upload-label { display: block; cursor: pointer; }
+    .img-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      transition: border-color 0.2s, background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 62px;
+    }
+    .img-upload-label:hover .img-upload-area {
+      border-color: var(--accent);
+      background: rgba(124,106,247,0.04);
+    }
+    .img-upload-area i { font-size: 1.1rem; }
+    .img-upload-area.has-image {
+      padding: 0.35rem;
+      border-style: solid;
+      border-color: var(--accent);
+    }
+    .img-upload-area.has-image img {
+      max-height: 80px;
+      max-width: 100%;
+      border-radius: 6px;
+      object-fit: cover;
+    }
+
+    /* ── TAG CHIP INPUT ── */
+    .tags-input-wrapper {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.35rem 0.6rem;
+      min-height: 42px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.3rem;
+      cursor: text;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .tags-input-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,247,0.14);
+    }
+    .tag-raw-input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 0.875rem;
+      flex: 1;
+      min-width: 80px;
+      padding: 0.15rem 0;
+    }
+    .tag-raw-input::placeholder { color: var(--muted); }
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: rgba(124, 106, 247, 0.18);
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.3rem 0.2rem 0.55rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .tag-chip-remove {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 0.6rem;
+      padding: 0.1rem 0.15rem;
+      display: flex;
+      align-items: center;
+      border-radius: 50%;
+      opacity: 0.65;
+      transition: opacity 0.15s, background 0.15s;
+      line-height: 1;
+    }
+    .tag-chip-remove:hover { opacity: 1; background: rgba(124,106,247,0.2); }
+
+    /* ── ITEM CONFIRM PANEL ── */
+    .item-confirm-panel {
+      text-align: center;
+      padding: 0.5rem 0 0.25rem;
+    }
+    .item-confirm-icon {
+      font-size: 2.6rem;
+      color: #4CAF50;
+      margin-bottom: 0.75rem;
+    }
+    .item-confirm-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+    .item-confirm-sub {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+    .item-confirm-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .item-confirm-actions .btn { flex: 1; justify-content: center; }
+
+    /* ── SEARCH HERO ── */
+    .search-hero {
+      text-align: center;
+      padding: 2.5rem 0 2rem;
+    }
+    .search-hero h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .search-hero p {
+      color: var(--muted);
+      margin-bottom: 1.6rem;
+      font-size: 0.95rem;
+    }
+    .search-bar {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      padding: 0.7rem 0.7rem 0.7rem 1.4rem;
+      gap: 0.75rem;
+      max-width: 580px;
+      margin: 0 auto;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-bar:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(124,106,247,0.12), 0 6px 28px rgba(0,0,0,0.2);
+    }
+    .search-bar i { color: var(--muted); font-size: 1.05rem; flex-shrink: 0; }
+    .search-bar input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 1rem;
+    }
+    .search-bar input::placeholder { color: var(--muted); }
+    .search-bar button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      padding: 0.5rem 1.25rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 700;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .search-bar button:hover { background: var(--accent-hover); }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .page-title { font-size: 1.35rem; font-weight: 800; }
+    .page-subtitle { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
+
+    /* ── STATS ── */
+    .stats-row { display: flex; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.4rem;
+      flex: 1;
+      min-width: 120px;
+    }
+    .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--accent); line-height: 1; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* ── DETAIL PAGE ── */
+    .detail-header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .detail-icon {
+      width: 68px;
+      height: 68px;
+      background: rgba(124,106,247,0.13);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.9rem;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .detail-info { flex: 1; min-width: 0; }
+    .detail-title { font-size: 1.55rem; font-weight: 800; margin: 0.35rem 0 0.5rem; }
+    .detail-meta {
+      display: flex;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+    .detail-meta i { font-size: 0.8rem; margin-right: 0.25rem; }
+
+    /* ── QR ── */
+    .qr-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .qr-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+    .qr-card img {
+      border-radius: 8px;
+      max-width: 180px;
+      background: white;
+      padding: 6px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ── INFO GRID ── */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .info-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .info-title i { color: var(--accent); }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.855rem;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { color: var(--muted); }
+
+    /* ── BREADCRUMB ── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-bottom: 1.25rem;
+    }
+    .breadcrumb a { color: var(--muted); text-decoration: none; transition: color 0.18s; }
+    .breadcrumb a:hover { color: var(--accent); }
+    .breadcrumb i { font-size: 0.65rem; opacity: 0.6; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 3.5rem 2rem;
+      color: var(--muted);
+    }
+    .empty-state i { font-size: 2.8rem; margin-bottom: 1rem; opacity: 0.35; display: block; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 5.5rem;
+      right: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.7rem 1.15rem;
+      font-size: 0.875rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+      transform: translateX(calc(100% + 2.5rem));
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 400;
+      max-width: 280px;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast.success { border-left: 4px solid #4CAF50; }
+    .toast.error   { border-left: 4px solid #ef5350; }
+
+    /* ── CARD ACTIONS (edit/delete menu) ── */
+    .card-wrap { position: relative; }
+    .card-menu-btn {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.55rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 7px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      z-index: 10;
+    }
+    .card-menu-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .card-dropdown {
+      position: fixed;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.3rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+      z-index: 600;
+      min-width: 140px;
+      display: none;
+    }
+    .card-dropdown.open { display: block; animation: cddrop 0.14s ease; }
+    @keyframes cddrop {
+      from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .card-dropdown button {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      width: 100%;
+      padding: 0.5rem 0.8rem;
+      border: none;
+      background: none;
+      color: var(--text);
+      font-size: 0.875rem;
+      border-radius: 7px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.13s, color 0.13s;
+    }
+    .card-dropdown button:hover { background: rgba(124,106,247,0.1); color: var(--accent); }
+    .card-dropdown button.danger:hover { background: rgba(239,83,80,0.1); color: #ef5350; }
+    .card-dropdown button i { width: 14px; text-align: center; font-size: 0.8rem; }
+    .card-dropdown-divider { border: none; border-top: 1px solid var(--border); margin: 0.25rem 0; }
+
+    /* ── LIGHTBOX ── */
+    .lightbox-trigger {
+      display: block;
+      cursor: zoom-in;
+    }
+    .lightbox-trigger img { transition: opacity 0.18s; }
+    .lightbox-trigger:hover img { opacity: 0.82; }
+    .lightbox-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.93);
+      z-index: 900;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .lightbox-overlay.open { display: flex; animation: fade-lb 0.18s ease; }
+    @keyframes fade-lb { from { opacity: 0; } to { opacity: 1; } }
+    .lightbox-overlay img {
+      max-width: 90vw;
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 16px 80px rgba(0,0,0,0.85);
+      display: block;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.22);
+      color: white;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: background 0.18s;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── FILTER BAR ── */
+    .filter-bar-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 0 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .filter-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 800px;
+      background: rgba(43, 45, 66, 0.4) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      border: 1px solid rgba(124, 106, 247, 0.25) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2) !important;
+      padding: 0.85rem 1rem;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 0.28rem; }
+    .filter-label {
+      font-size: 0.67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .filter-select, .filter-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 0.38rem 0.65rem;
+      color: var(--text);
+      font-size: 0.82rem;
+      outline: none;
+      min-width: 130px;
+      transition: border-color 0.18s;
+    }
+    .filter-select:focus, .filter-input:focus { border-color: var(--accent); }
+    .filter-select option { background: var(--surface); }
+    .filter-input::placeholder { color: var(--muted); }
+    .filter-toggle { display: flex; gap: 0.22rem; }
+    .filter-btn {
+      padding: 0.38rem 0.72rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .filter-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+    .filter-clear {
+      margin-left: auto;
+      align-self: flex-end;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 7px;
+      padding: 0.38rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s;
+    }
+    .filter-clear:hover { border-color: #ef5350; color: #ef5350; }
+
+    /* Location field locked to a box selection */
+    .form-input.location-from-box {
+      opacity: 0.62;
+      cursor: not-allowed;
+      background: var(--surface2);
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(124,106,247,0.25); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* ── RESPONSIVE — 768px tablet ── */
+    @media (max-width: 768px) {
+      .main { padding: 1.5rem 1.25rem; }
+
+      /* 2-column grid on tablet */
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+
+      /* Shrink nav search */
+      .nav-search { max-width: 180px; }
+      .nav-search input { width: 120px; }
+
+      /* Stats row: allow slight shrink */
+      .stat-value { font-size: 1.5rem; }
+
+      /* Filter bar: horizontal scroll, no wrap */
+      .filter-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 0.6rem;
+        padding: 0.75rem 0.85rem;
+      }
+      .filter-bar::-webkit-scrollbar { display: none; }
+      .filter-group { flex-shrink: 0; }
+      .filter-clear { flex-shrink: 0; margin-left: 0; }
+      .filter-select,
+      .filter-input  { min-width: 110px; }
+
+      /* Modal: cap height on tablet */
+      .modal { max-height: 90vh; }
+    }
+
+    /* ── RESPONSIVE — 480px mobile ── */
+    @media (max-width: 480px) {
+      :root { --nav-h: 56px; }
+
+      .main { padding: 0.9rem 0.85rem; }
+
+      /* 1-column grid on mobile */
+      .grid-3 { grid-template-columns: 1fr; }
+
+      /* Hide nav search entirely; hamburger + logo sufficient */
+      .nav-search { display: none; }
+
+      /* Tighter logo */
+      .logo { font-size: 1rem; }
+
+      /* Stats: horizontal scroll strip, don't stack */
+      .stats-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+      .stats-row::-webkit-scrollbar { display: none; }
+      .stat-card { flex: 0 0 auto; min-width: 90px; padding: 0.75rem 0.9rem; }
+      .stat-value { font-size: 1.3rem; }
+      .stat-label { font-size: 0.68rem; }
+
+      /* Search hero */
+      .search-hero h1   { font-size: 1.45rem; }
+      .search-hero p    { font-size: 0.82rem; margin-bottom: 1.1rem; }
+      .search-bar       { padding: 0.5rem 0.5rem 0.5rem 0.9rem; gap: 0.5rem; }
+      .search-bar input { font-size: 0.9rem; }
+      .search-bar button { padding: 0.4rem 0.85rem; font-size: 0.78rem; }
+
+      /* Page header */
+      .page-header  { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .page-title   { font-size: 1.1rem; }
+      .page-subtitle { font-size: 0.75rem; }
+
+      /* Cards */
+      .card        { padding: 0.9rem; }
+      .card-title  { font-size: 0.88rem; }
+      .card-icon   { width: 38px; height: 38px; font-size: 0.95rem; }
+      .card-menu-btn { width: 26px; height: 26px; font-size: 0.72rem; }
+
+      /* Detail pages */
+      .detail-header { padding: 1rem; flex-direction: column; gap: 1rem; }
+      .detail-icon   { width: 52px; height: 52px; font-size: 1.5rem; }
+      .detail-title  { font-size: 1.2rem; }
+      .detail-meta   { font-size: 0.78rem; gap: 0.6rem; }
+      .qr-card       { width: 100%; }
+      .info-grid     { grid-template-columns: 1fr; }
+
+      /* Breadcrumb */
+      .breadcrumb { font-size: 0.75rem; gap: 0.35rem; }
+
+      /* Modal → bottom sheet on mobile */
+      .modal-backdrop { align-items: flex-end; }
+      .modal {
+        max-width: 100%;
+        border-radius: var(--radius) var(--radius) 0 0;
+        max-height: 92vh;
+        padding: 1.25rem 1rem;
+      }
+
+      /* FAB: tighter position */
+      .fab { bottom: 1.1rem; right: 1.1rem; width: 48px; height: 48px; font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="navbar">
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <a href="/" class="logo">
+    <i class="fa-solid fa-warehouse"></i>
+    WarehouseMS
+  </a>
+  <div class="nav-spacer"></div>
+  <form class="nav-search" action="/search" method="get" role="search">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" name="q" placeholder="Quick search…"
+           value="{{ request.args.get('q', '') }}" autocomplete="off">
+  </form>
+</nav>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar" aria-label="Sidebar navigation">
+  <div style="padding: 0.25rem 0 0.5rem;">
+    <div class="sidebar-label">Navigation</div>
+    <a href="/" class="sidebar-link {% if request.path == '/' %}active{% endif %}">
+      <i class="fa-solid fa-house"></i> Home
+    </a>
+    <a href="/items" class="sidebar-link {% if request.path == '/items' %}active{% endif %}">
+      <i class="fa-solid fa-cubes"></i> All Items
+    </a>
+    <a href="/search" class="sidebar-link {% if request.path == '/search' %}active{% endif %}">
+      <i class="fa-solid fa-magnifying-glass"></i> Search
+    </a>
+  </div>
+
+  {% if locations %}
+  <hr class="sidebar-divider">
+  <div>
+    <div class="sidebar-label">Storage Locations</div>
+    {% for loc in locations %}
+    <a href="/search?q={{ loc | urlencode }}" class="sidebar-link">
+      <i class="fa-solid fa-location-dot"></i>
+      {{ loc }}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <hr class="sidebar-divider">
+  <div>
+    <div class="sidebar-label">Admin</div>
+    <a href="#" class="sidebar-link" onclick="alert('Coming soon'); return false;">
+      <i class="fa-solid fa-map-pin"></i> Manage Locations
+    </a>
+    <a href="#" class="sidebar-link" onclick="alert('Coming soon'); return false;">
+      <i class="fa-solid fa-users"></i> Manage Users
+    </a>
+    <a href="#" class="sidebar-link" onclick="alert('Coming soon'); return false;">
+      <i class="fa-solid fa-gear"></i> Settings
+    </a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- FAB -->
+<button class="fab" onclick="openAddModal()" title="Add box or item" aria-label="Add new">
+  <i class="fa-solid fa-plus"></i>
+</button>
+
+<!-- ADD MODAL -->
+<div class="modal-backdrop" id="addModal" role="dialog" aria-modal="true" aria-label="Add new">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="fa-solid fa-plus" style="color:var(--accent);margin-right:0.3rem;"></i>
+        Add New
+      </span>
+      <button class="modal-close" onclick="closeAddModal()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-box-btn" onclick="switchTab('box')">
+        <i class="fa-solid fa-box"></i> Box
+      </button>
+      <button class="tab-btn" id="tab-item-btn" onclick="switchTab('item')">
+        <i class="fa-solid fa-cube"></i> Item
+      </button>
+    </div>
+
+    <!-- Box form -->
+    <div id="tab-box-form">
+      <div class="form-group">
+        <label class="form-label" for="box-name">Box Name *</label>
+        <input class="form-input" type="text" id="box-name" placeholder="e.g. Electronics Box" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="box-location">Location</label>
+        <input class="form-input" type="text" id="box-location" placeholder="e.g. Shelf A3" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          Image
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+        </label>
+        <label class="img-upload-label" for="box-image">
+          <div class="img-upload-area" id="box-image-area">
+            <i class="fa-solid fa-image"></i><span>Click to upload a photo</span>
+          </div>
+          <input type="file" id="box-image" accept="image/jpeg,image/png,image/gif,image/webp"
+                 style="display:none;" onchange="previewImg(this,'box-image-area')">
+        </label>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="createBox()">
+        <i class="fa-solid fa-box"></i> Create Box
+      </button>
+    </div>
+
+    <!-- Item form -->
+    <div id="tab-item-form" style="display:none;">
+
+      <!-- Fields (hidden after successful create) -->
+      <div id="item-fields">
+        <div class="form-group">
+          <label class="form-label" for="item-name">Item Name *</label>
+          <input class="form-input" type="text" id="item-name" placeholder="e.g. USB Cable" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="item-category">Category</label>
+          <input class="form-input" type="text" id="item-category" placeholder="e.g. Electronics" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="item-location">Location</label>
+          <input class="form-input" type="text" id="item-location" placeholder="e.g. Drawer 3" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="item-box-select">Box</label>
+          <select class="form-input" id="item-box-select">
+            <option value="">— No Box —</option>
+            {% for box in all_boxes %}
+            <option value="{{ box.id }}">{{ box.name }} ({{ box.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(press Enter to add)</span></label>
+          <div class="tags-input-wrapper" id="tags-wrapper">
+            <div id="tags-chips" style="display:contents;"></div>
+            <input type="text" class="tag-raw-input" id="tag-raw-input" placeholder="e.g. cable…">
+          </div>
+          <input type="hidden" id="item-tags">
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            Image
+            <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+          </label>
+          <label class="img-upload-label" for="item-image">
+            <div class="img-upload-area" id="item-image-area">
+              <i class="fa-solid fa-image"></i><span>Click to upload a photo</span>
+            </div>
+            <input type="file" id="item-image" accept="image/jpeg,image/png,image/gif,image/webp"
+                   style="display:none;" onchange="previewImg(this,'item-image-area')">
+          </label>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.25rem;">
+          <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="createItem()">
+            <i class="fa-solid fa-cube"></i> Create Item
+          </button>
+          <button class="btn btn-ghost" onclick="skipItemForm()" title="Skip without adding an item">
+            Skip
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirmation panel (shown after successful create) -->
+      <div id="item-confirm" style="display:none;">
+        <div class="item-confirm-panel">
+          <div class="item-confirm-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="item-confirm-title">Item added!</div>
+          <div class="item-confirm-sub">Add another item to this box?</div>
+          <div class="item-confirm-actions">
+            <button class="btn btn-primary" onclick="addAnotherItem()">
+              <i class="fa-solid fa-plus"></i> Add Another
+            </button>
+            <button class="btn btn-ghost" onclick="doneAddingItems()">
+              <i class="fa-solid fa-check"></i> Done
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox-overlay" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">
+    <i class="fa-solid fa-xmark"></i>
+  </button>
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- CARD DROPDOWN (shared, repositioned by JS) -->
+<div class="card-dropdown" id="cardDropdown">
+  <button onclick="openEditModal()"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+  <hr class="card-dropdown-divider">
+  <button class="danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Delete</button>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-backdrop" id="editModal" role="dialog" aria-modal="true" aria-label="Edit">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="edit-modal-title">
+        <i class="fa-solid fa-pen-to-square" style="color:var(--accent);margin-right:0.3rem;"></i>
+        Edit
+      </span>
+      <button class="modal-close" onclick="closeEditModal()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Edit Box form -->
+    <div id="edit-box-form">
+      <div class="form-group">
+        <label class="form-label" for="edit-box-name">Box Name *</label>
+        <input class="form-input" type="text" id="edit-box-name" placeholder="e.g. Electronics Box" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-box-location">Location</label>
+        <input class="form-input" type="text" id="edit-box-location" placeholder="e.g. Shelf A3" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          Replace Image
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+        </label>
+        <label class="img-upload-label" for="edit-box-image">
+          <div class="img-upload-area" id="edit-box-image-area">
+            <i class="fa-solid fa-image"></i><span>Click to upload a new photo</span>
+          </div>
+          <input type="file" id="edit-box-image" accept="image/jpeg,image/png,image/gif,image/webp"
+                 style="display:none;" onchange="previewImg(this,'edit-box-image-area')">
+        </label>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveEdit()">
+        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+      </button>
+    </div>
+
+    <!-- Edit Item form -->
+    <div id="edit-item-form" style="display:none;">
+      <div class="form-group">
+        <label class="form-label" for="edit-item-name">Item Name *</label>
+        <input class="form-input" type="text" id="edit-item-name" placeholder="e.g. USB Cable" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-item-category">Category</label>
+        <input class="form-input" type="text" id="edit-item-category" placeholder="e.g. Electronics" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-item-location">Location</label>
+        <input class="form-input" type="text" id="edit-item-location" placeholder="e.g. Drawer 3" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-item-box-select">Box</label>
+        <select class="form-input" id="edit-item-box-select">
+          <option value="">— No Box —</option>
+          {% for box in all_boxes %}
+          <option value="{{ box.id }}">{{ box.name }} ({{ box.code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(press Enter to add)</span></label>
+        <div class="tags-input-wrapper" id="edit-tags-wrapper">
+          <div id="edit-tags-chips" style="display:contents;"></div>
+          <input type="text" class="tag-raw-input" id="edit-tag-raw-input" placeholder="e.g. cable…">
+        </div>
+        <input type="hidden" id="edit-item-tags">
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          Replace Image
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+        </label>
+        <label class="img-upload-label" for="edit-item-image">
+          <div class="img-upload-area" id="edit-item-image-area">
+            <i class="fa-solid fa-image"></i><span>Click to upload a new photo</span>
+          </div>
+          <input type="file" id="edit-item-image" accept="image/jpeg,image/png,image/gif,image/webp"
+                 style="display:none;" onchange="previewImg(this,'edit-item-image-area')">
+        </label>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveEdit()">
+        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<script>
+  // ── Sidebar ──
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    closeSidebar();
+    closeLightbox();
+  });
+
+  // ── Modal ──
+  let needsReload = false;
+
+  function openAddModal() {
+    document.getElementById('addModal').classList.add('show');
+  }
+
+  function closeAddModal() {
+    document.getElementById('addModal').classList.remove('show');
+    if (needsReload) {
+      window.location.reload();
+      return;
+    }
+    setTimeout(resetModal, 280);
+  }
+
+  function resetModal() {
+    needsReload = false;
+    switchTab('box');
+    document.getElementById('item-fields').style.display = 'block';
+    document.getElementById('item-confirm').style.display = 'none';
+    document.getElementById('box-name').value = '';
+    document.getElementById('box-location').value = '';
+    document.getElementById('item-name').value = '';
+    document.getElementById('item-category').value = '';
+    document.getElementById('item-location').value = '';
+    document.getElementById('item-box-select').value = '';
+    clearTagChips();
+    resetImgArea('box-image', 'box-image-area');
+    resetImgArea('item-image', 'item-image-area');
+  }
+
+  // ── Image preview & upload helpers ──
+  function previewImg(input, areaId) {
+    const area = document.getElementById(areaId);
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        area.innerHTML = `<img src="${e.target.result}" alt="preview">`;
+        area.classList.add('has-image');
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  function resetImgArea(inputId, areaId) {
+    const area = document.getElementById(areaId);
+    if (area) {
+      area.innerHTML = '<i class="fa-solid fa-image"></i><span>Click to upload a photo</span>';
+      area.classList.remove('has-image');
+    }
+    const inp = document.getElementById(inputId);
+    if (inp) inp.value = '';
+  }
+
+  async function uploadEntityImage(entityType, entityId, file) {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      await fetch(`/api/${entityType}/${entityId}/image`, { method: 'POST', body: fd });
+    } catch {}
+  }
+
+  document.getElementById('addModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddModal();
+  });
+
+  // ── Tabs ──
+  function switchTab(tab) {
+    const isBox = tab === 'box';
+    document.getElementById('tab-box-form').style.display  = isBox ? 'block' : 'none';
+    document.getElementById('tab-item-form').style.display = isBox ? 'none'  : 'block';
+    document.getElementById('tab-box-btn').classList.toggle('active',  isBox);
+    document.getElementById('tab-item-btn').classList.toggle('active', !isBox);
+  }
+
+  // ── Toast ──
+  let toastTimer;
+  function showToast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast ' + type + ' show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  // ── Create Box ──
+  async function createBox() {
+    const name     = document.getElementById('box-name').value.trim();
+    const boxLoc   = document.getElementById('box-location').value.trim();
+    const imgInput = document.getElementById('box-image');
+    if (!name) { showToast('Box name is required', 'error'); return; }
+    try {
+      const r = await fetch('/api/boxes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, location: boxLoc || null })
+      });
+      if (r.ok) {
+        const newBox = await r.json();
+        // Upload image if provided
+        if (imgInput.files && imgInput.files[0]) {
+          await uploadEntityImage('boxes', newBox.id, imgInput.files[0]);
+        }
+        needsReload = true;
+        showToast('Box created — now add items to it!');
+        // Inject the new box into the dropdown and pre-select it
+        const sel = document.getElementById('item-box-select');
+        const opt = new Option(`${newBox.name} (${newBox.code})`, newBox.id);
+        sel.add(opt);
+        sel.value = String(newBox.id);
+        // Switch to item tab automatically
+        switchTab('item');
+        document.getElementById('item-name').focus();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        showToast(err.error || 'Failed to create box', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  // ── Create Item ──
+  async function createItem() {
+    const name     = document.getElementById('item-name').value.trim();
+    const category = document.getElementById('item-category').value.trim();
+    const itemLoc  = document.getElementById('item-location').value.trim();
+    const boxId    = document.getElementById('item-box-select').value;
+    const imgInput = document.getElementById('item-image');
+    const tags     = [...tagsList];
+    if (!name) { showToast('Item name is required', 'error'); return; }
+    try {
+      const r = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          category: category || null,
+          location: itemLoc || null,
+          box_id: boxId ? parseInt(boxId, 10) : null,
+          tags
+        })
+      });
+      if (r.ok) {
+        const newItem = await r.json();
+        // Upload image if provided
+        if (imgInput.files && imgInput.files[0]) {
+          await uploadEntityImage('items', newItem.id, imgInput.files[0]);
+        }
+        needsReload = true;
+        // Show confirmation panel
+        document.getElementById('item-fields').style.display = 'none';
+        document.getElementById('item-confirm').style.display = 'block';
+      } else {
+        const err = await r.json().catch(() => ({}));
+        showToast(err.error || 'Failed to create item', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  // Called from confirmation panel: reset item form, keep box selected
+  function addAnotherItem() {
+    const savedBoxId = document.getElementById('item-box-select').value;
+    document.getElementById('item-name').value     = '';
+    document.getElementById('item-category').value = '';
+    document.getElementById('item-location').value = '';
+    document.getElementById('item-box-select').value = savedBoxId;
+    clearTagChips();
+    resetImgArea('item-image', 'item-image-area');
+    document.getElementById('item-confirm').style.display = 'none';
+    document.getElementById('item-fields').style.display  = 'block';
+    document.getElementById('item-name').focus();
+  }
+
+  // Called from confirmation panel: close + reload
+  function doneAddingItems() {
+    closeAddModal();
+  }
+
+  // Called from Skip button on item tab
+  function skipItemForm() {
+    closeAddModal();
+  }
+
+  // ── Tag chip logic ──
+  const tagsList = [];
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function syncTagsHidden() {
+    document.getElementById('item-tags').value = tagsList.join(',');
+  }
+
+  function renderTagChips() {
+    const container = document.getElementById('tags-chips');
+    container.innerHTML = tagsList.map(t =>
+      `<span class="tag-chip">${escHtml(t)}<button type="button" class="tag-chip-remove" data-tag="${escHtml(t)}" aria-label="Remove ${escHtml(t)}"><i class="fa-solid fa-xmark"></i></button></span>`
+    ).join('');
+    syncTagsHidden();
+  }
+
+  function addTagChip(raw) {
+    const t = raw.trim();
+    if (!t || tagsList.includes(t)) return;
+    tagsList.push(t);
+    renderTagChips();
+  }
+
+  function removeTagChip(t) {
+    const idx = tagsList.indexOf(t);
+    if (idx !== -1) { tagsList.splice(idx, 1); renderTagChips(); }
+  }
+
+  function clearTagChips() {
+    tagsList.length = 0;
+    renderTagChips();
+    const ri = document.getElementById('tag-raw-input');
+    if (ri) ri.value = '';
+  }
+
+  // Delegate remove-chip clicks from the chips container
+  document.getElementById('tags-chips').addEventListener('click', e => {
+    const btn = e.target.closest('.tag-chip-remove');
+    if (btn) removeTagChip(btn.dataset.tag);
+  });
+
+  // Tag input: Enter adds chip, Backspace on empty removes last
+  document.getElementById('tag-raw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.target.value;
+      if (val.trim()) { addTagChip(val); e.target.value = ''; }
+    } else if (e.key === 'Backspace' && !e.target.value && tagsList.length) {
+      removeTagChip(tagsList[tagsList.length - 1]);
+    }
+  });
+
+  // Clicking the wrapper focuses the hidden text input
+  document.getElementById('tags-wrapper').addEventListener('click', () => {
+    document.getElementById('tag-raw-input').focus();
+  });
+
+  // ── View Toggle ──
+  // containerId defaults to 'viewContainer'. Buttons scope to their container
+  // via data-container="<id>"; unscoped buttons fall back to default behaviour.
+  function setView(view, containerId) {
+    containerId = containerId || 'viewContainer';
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.classList.toggle('list-view', view === 'list');
+    container.classList.toggle('grid-3',    view !== 'list');
+    const scoped  = document.querySelectorAll(`.view-btn[data-container="${containerId}"]`);
+    const targets = scoped.length
+      ? scoped
+      : document.querySelectorAll('.view-btn:not([data-container])');
+    targets.forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    try { localStorage.setItem('wms_view_' + containerId, view); } catch {}
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    ['viewContainer', 'itemsContainer'].forEach(cid => {
+      if (document.getElementById(cid)) {
+        try {
+          const pref = localStorage.getItem('wms_view_' + cid) || 'grid';
+          setView(pref, cid);
+        } catch {}
+      }
+    });
+
+    // Edit tags chip setup
+    document.getElementById('edit-tags-chips').addEventListener('click', e => {
+      const btn = e.target.closest('.tag-chip-remove');
+      if (btn) removeEditTagChip(btn.dataset.tag);
+    });
+    document.getElementById('edit-tag-raw-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = e.target.value;
+        if (val.trim()) { addEditTagChip(val); e.target.value = ''; }
+      } else if (e.key === 'Backspace' && !e.target.value && editTagsList.length) {
+        removeEditTagChip(editTagsList[editTagsList.length - 1]);
+      }
+    });
+    document.getElementById('edit-tags-wrapper').addEventListener('click', () => {
+      document.getElementById('edit-tag-raw-input').focus();
+    });
+
+    // Close card dropdown on outside click
+    document.addEventListener('click', e => {
+      const dd = document.getElementById('cardDropdown');
+      if (dd.classList.contains('open') && !dd.contains(e.target) && !e.target.closest('.card-menu-btn')) {
+        dd.classList.remove('open');
+        activeMenuBtn = null;
+      }
+      // Lightbox trigger
+      const trigger = e.target.closest('.lightbox-trigger');
+      if (trigger && trigger.dataset.src) {
+        openLightbox(trigger.dataset.src, trigger.dataset.alt || '');
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        document.getElementById('cardDropdown').classList.remove('open');
+        activeMenuBtn = null;
+      }
+    });
+
+    // Lightbox: close on backdrop click
+    document.getElementById('lightbox').addEventListener('click', e => {
+      if (e.target === document.getElementById('lightbox')) closeLightbox();
+    });
+
+    // Close edit modal on backdrop click
+    document.getElementById('editModal').addEventListener('click', function(e) {
+      if (e.target === this) closeEditModal();
+    });
+
+    // Location auto-fill from box selection
+    const boxSel = document.getElementById('item-box-select');
+    if (boxSel) boxSel.addEventListener('change', () => syncBoxLocation('item-box-select', 'item-location'));
+
+    const editBoxSel = document.getElementById('edit-item-box-select');
+    if (editBoxSel) editBoxSel.addEventListener('change', () => syncBoxLocation('edit-item-box-select', 'edit-item-location'));
+  });
+
+  // ── Lightbox ──
+  function openLightbox(src, alt) {
+    const lb = document.getElementById('lightbox');
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox-img').alt = alt || '';
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // ── Location auto-fill from box ──
+  async function syncBoxLocation(selectId, locInputId) {
+    const boxId  = document.getElementById(selectId).value;
+    const locInp = document.getElementById(locInputId);
+    if (!boxId) {
+      locInp.removeAttribute('readonly');
+      locInp.classList.remove('location-from-box');
+      return;
+    }
+    try {
+      const r = await fetch(`/api/boxes/${boxId}`);
+      if (!r.ok) return;
+      const box = await r.json();
+      locInp.value = box.location || '';
+      locInp.setAttribute('readonly', '');
+      locInp.classList.add('location-from-box');
+    } catch {}
+  }
+
+  // ── Client-side filter bar ──
+  let activeTypeFilter = 'all';
+
+  function setTypeFilter(type) {
+    activeTypeFilter = type;
+    document.querySelectorAll('.filter-btn[data-type]').forEach(b => {
+      b.classList.toggle('active', b.dataset.type === type);
+    });
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const locFilter = (document.getElementById('filter-location')?.value || '').toLowerCase();
+    const catFilter = (document.getElementById('filter-category')?.value || '').toLowerCase();
+    const tagFilter = (document.getElementById('filter-tag')?.value || '').trim().toLowerCase();
+
+    document.querySelectorAll('.card-wrap[data-type]').forEach(card => {
+      const type     = card.dataset.type || '';
+      const location = (card.dataset.location || '').toLowerCase();
+      const category = (card.dataset.category || '').toLowerCase();
+      const tags     = (card.dataset.tags || '').toLowerCase();
+
+      const typeOk = activeTypeFilter === 'all' || type === activeTypeFilter;
+      const locOk  = !locFilter || location === locFilter;
+      const catOk  = !catFilter || category === catFilter;
+      const tagOk  = !tagFilter || tags.split(',').some(t => t.trim() && t.includes(tagFilter));
+
+      card.style.display = (typeOk && locOk && catOk && tagOk) ? '' : 'none';
+    });
+  }
+
+  function clearFilters() {
+    const locSel = document.getElementById('filter-location');
+    const catSel = document.getElementById('filter-category');
+    const tagInp = document.getElementById('filter-tag');
+    if (locSel) locSel.value = '';
+    if (catSel) catSel.value = '';
+    if (tagInp) tagInp.value = '';
+    activeTypeFilter = 'all';
+    document.querySelectorAll('.filter-btn[data-type]').forEach(b => {
+      b.classList.toggle('active', b.dataset.type === 'all');
+    });
+    document.querySelectorAll('.card-wrap[data-type]').forEach(c => c.style.display = '');
+  }
+
+  // ── Card dropdown ──
+  let activeMenuBtn = null;
+  let menuData = {};
+
+  function openCardMenu(event, btn) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dd = document.getElementById('cardDropdown');
+    if (activeMenuBtn === btn && dd.classList.contains('open')) {
+      dd.classList.remove('open');
+      activeMenuBtn = null;
+      return;
+    }
+    activeMenuBtn = btn;
+    menuData = Object.assign({}, btn.dataset);
+    const rect = btn.getBoundingClientRect();
+    dd.style.top  = (rect.bottom + 6) + 'px';
+    dd.style.left = Math.min(rect.right - 140, window.innerWidth - 152) + 'px';
+    dd.classList.add('open');
+  }
+
+  // ── Edit tags ──
+  const editTagsList = [];
+
+  function renderEditTagChips() {
+    const container = document.getElementById('edit-tags-chips');
+    container.innerHTML = editTagsList.map(t =>
+      `<span class="tag-chip">${escHtml(t)}<button type="button" class="tag-chip-remove" data-tag="${escHtml(t)}" aria-label="Remove ${escHtml(t)}"><i class="fa-solid fa-xmark"></i></button></span>`
+    ).join('');
+    document.getElementById('edit-item-tags').value = editTagsList.join(',');
+  }
+
+  function addEditTagChip(raw) {
+    const t = raw.trim();
+    if (!t || editTagsList.includes(t)) return;
+    editTagsList.push(t);
+    renderEditTagChips();
+  }
+
+  function removeEditTagChip(t) {
+    const idx = editTagsList.indexOf(t);
+    if (idx !== -1) { editTagsList.splice(idx, 1); renderEditTagChips(); }
+  }
+
+  // ── Edit modal ──
+  function openEditModal() {
+    document.getElementById('cardDropdown').classList.remove('open');
+    activeMenuBtn = null;
+    const d = menuData;
+    const isBox = d.type === 'box';
+    document.getElementById('edit-modal-title').innerHTML =
+      `<i class="fa-solid fa-pen-to-square" style="color:var(--accent);margin-right:0.3rem;"></i> Edit ${isBox ? 'Box' : 'Item'}`;
+    document.getElementById('edit-box-form').style.display  = isBox ? 'block' : 'none';
+    document.getElementById('edit-item-form').style.display = isBox ? 'none'  : 'block';
+    if (isBox) {
+      document.getElementById('edit-box-name').value     = d.name     || '';
+      document.getElementById('edit-box-location').value = d.location || '';
+      resetImgArea('edit-box-image', 'edit-box-image-area');
+    } else {
+      document.getElementById('edit-item-name').value     = d.name     || '';
+      document.getElementById('edit-item-category').value = d.category || '';
+      const selBoxId = d.boxId || '';
+      document.getElementById('edit-item-box-select').value = selBoxId;
+      if (selBoxId) {
+        syncBoxLocation('edit-item-box-select', 'edit-item-location');
+      } else {
+        const locInp = document.getElementById('edit-item-location');
+        locInp.value = d.location || '';
+        locInp.removeAttribute('readonly');
+        locInp.classList.remove('location-from-box');
+      }
+      editTagsList.length = 0;
+      try {
+        const parsed = JSON.parse(d.tags || '[]');
+        parsed.forEach(t => editTagsList.push(t));
+      } catch {}
+      renderEditTagChips();
+      resetImgArea('edit-item-image', 'edit-item-image-area');
+    }
+    document.getElementById('editModal').classList.add('show');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('show');
+  }
+
+  async function saveEdit() {
+    const d     = menuData;
+    const isBox = d.type === 'box';
+    const id    = d.id;
+    let payload, imgInput;
+
+    if (isBox) {
+      payload = {
+        name:     document.getElementById('edit-box-name').value.trim(),
+        location: document.getElementById('edit-box-location').value.trim() || null,
+      };
+      imgInput = document.getElementById('edit-box-image');
+      if (!payload.name) { showToast('Box name is required', 'error'); return; }
+    } else {
+      const boxId = document.getElementById('edit-item-box-select').value;
+      payload = {
+        name:     document.getElementById('edit-item-name').value.trim(),
+        category: document.getElementById('edit-item-category').value.trim() || null,
+        location: document.getElementById('edit-item-location').value.trim() || null,
+        box_id:   boxId ? parseInt(boxId, 10) : null,
+        tags:     [...editTagsList],
+      };
+      imgInput = document.getElementById('edit-item-image');
+      if (!payload.name) { showToast('Item name is required', 'error'); return; }
+    }
+
+    try {
+      const endpoint = isBox ? `/api/boxes/${id}` : `/api/items/${id}`;
+      const r = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (r.ok) {
+        if (imgInput.files && imgInput.files[0]) {
+          const entityType = isBox ? 'boxes' : 'items';
+          await uploadEntityImage(entityType, id, imgInput.files[0]);
+        }
+        showToast(`${isBox ? 'Box' : 'Item'} updated!`);
+        closeEditModal();
+        setTimeout(() => window.location.reload(), 900);
+      } else {
+        const err = await r.json().catch(() => ({}));
+        showToast(err.error || 'Update failed', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  // ── Delete ──
+  async function confirmDelete() {
+    document.getElementById('cardDropdown').classList.remove('open');
+    activeMenuBtn = null;
+    const d     = menuData;
+    const isBox = d.type === 'box';
+    const label = isBox ? `box "${d.name}"` : `item "${d.name}"`;
+    if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+    try {
+      const endpoint = isBox ? `/api/boxes/${d.id}` : `/api/items/${d.id}`;
+      const r = await fetch(endpoint, { method: 'DELETE' });
+      if (r.ok || r.status === 204) {
+        showToast(`${isBox ? 'Box' : 'Item'} deleted`);
+        setTimeout(() => window.location.reload(), 900);
+      } else {
+        showToast('Delete failed', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+</script>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

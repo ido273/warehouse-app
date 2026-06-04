@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Not Found — WarehouseMS{% endblock %}
+
+{% block content %}
+<div class="empty-state" style="padding:5rem 2rem;">
+  <i class="fa-solid fa-triangle-exclamation" style="color:var(--accent);opacity:0.7;"></i>
+  <p style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">{{ message or 'Something went wrong' }}</p>
+  <p style="margin-bottom:1.5rem;">The resource you are looking for could not be found.</p>
+  <a href="/" class="btn btn-primary"><i class="fa-solid fa-house"></i> Back to Home</a>
+</div>
+{% endblock %}

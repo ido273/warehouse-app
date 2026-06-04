@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}All Items — WarehouseMS{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+  <i class="fa-solid fa-chevron-right"></i>
+  <span>All Items</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">All Items</div>
+    <div class="page-subtitle">{{ items | length }} item{{ 's' if items | length != 1 }} in inventory</div>
+  </div>
+  <div class="view-toggle">
+    <button class="view-btn active" data-view="grid" data-container="viewContainer"
+            onclick="setView('grid','viewContainer')" title="Grid view">
+      <i class="fa-solid fa-grip"></i>
+    </button>
+    <button class="view-btn" data-view="list" data-container="viewContainer"
+            onclick="setView('list','viewContainer')" title="List view">
+      <i class="fa-solid fa-list"></i>
+    </button>
+  </div>
+</div>
+
+{# ── Collect unique locations and categories ── #}
+{% set all_locations = [] %}
+{% for item in items %}{% if item.location and item.location not in all_locations %}{% set _ = all_locations.append(item.location) %}{% endif %}{% endfor %}
+
+{% set all_categories = [] %}
+{% for item in items %}{% if item.category and item.category not in all_categories %}{% set _ = all_categories.append(item.category) %}{% endif %}{% endfor %}
+
+{# ── Filter bar ── #}
+{% if items %}
+<div class="filter-bar-wrap">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label class="filter-label">Location</label>
+      <select class="filter-select" id="filter-location" onchange="applyFilters()">
+        <option value="">All Locations</option>
+        {% for loc in all_locations | sort %}
+        <option value="{{ loc | lower }}">{{ loc }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Category</label>
+      <select class="filter-select" id="filter-category" onchange="applyFilters()">
+        <option value="">All Categories</option>
+        {% for cat in all_categories | sort %}
+        <option value="{{ cat | lower }}">{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Tag</label>
+      <input type="text" class="filter-input" id="filter-tag" placeholder="Filter by tag…" oninput="applyFilters()">
+    </div>
+
+    <button class="filter-clear" onclick="clearFilters()">
+      <i class="fa-solid fa-xmark"></i> Clear
+    </button>
+  </div>
+</div>
+{% endif %}
+
+{% if items %}
+<div class="grid grid-3" id="viewContainer">
+  {% for item in items %}
+  <div class="card-wrap"
+       data-type="item"
+       data-location="{{ (item.location or '') | lower }}"
+       data-category="{{ (item.category or '') | lower }}"
+       data-tags="{{ item.tags | join(',') | lower }}">
+    <a href="/items/{{ item.id }}" style="text-decoration:none;color:inherit;display:block;">
+      <div class="card">
+        <div class="card-main">
+          <div class="card-icon" style="{% if item.image %}overflow:hidden;padding:0;{% endif %}">
+            {% if item.image %}
+            <img src="/uploads/{{ item.image }}" alt="{{ item.name }}"
+                 style="width:100%;height:100%;object-fit:cover;border-radius:10px;">
+            {% else %}
+            <i class="fa-solid fa-cube"></i>
+            {% endif %}
+          </div>
+          <div class="card-body">
+            <div class="code-chip">{{ item.code }}</div>
+            <div class="card-title">{{ item.name }}</div>
+            {% if item.category %}
+            <div style="margin-top:0.2rem;">
+              <span class="badge badge-accent"><i class="fa-solid fa-tag"></i> {{ item.category }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-right">
+          {% set b = boxes_map.get(item.box_id) if item.box_id else none %}
+          {% if b %}
+          <span class="badge badge-gray">
+            <i class="fa-solid fa-box"></i> {{ b.name }}
+          </span>
+          {% else %}
+          <span class="badge badge-gray">
+            <i class="fa-solid fa-inbox"></i> No box
+          </span>
+          {% endif %}
+          {% for tag in item.tags %}
+          <span class="tag">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </a>
+    <button class="card-menu-btn"
+            data-type="item"
+            data-id="{{ item.id }}"
+            data-name="{{ item.name | e }}"
+            data-category="{{ (item.category or '') | e }}"
+            data-location="{{ (item.location or '') | e }}"
+            data-box-id="{{ item.box_id or '' }}"
+            data-tags='{{ item.tags | tojson }}'
+            data-image="{{ item.image or '' }}"
+            onclick="openCardMenu(event, this)"
+            title="Options">
+      <i class="fa-solid fa-ellipsis-vertical"></i>
+    </button>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fa-solid fa-cube"></i>
+  <p>No items yet — click <strong style="color:var(--accent);">+</strong> to add one!</p>
+</div>
+{% endif %}
+{% endblock %}
