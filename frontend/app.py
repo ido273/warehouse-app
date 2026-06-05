@@ -1,5 +1,10 @@
 import os
-import requests
+import json
+import uuid
+import urllib.parse
+import urllib.request
+from urllib.error import HTTPError, URLError
+
 from flask import Flask, render_template, request, jsonify, Response
 
 app = Flask(__name__)
@@ -7,24 +12,123 @@ app = Flask(__name__)
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8080")
 
 
-def backend_get(path, params=None):
+def encode_multipart_formdata(fields, files):
+    boundary = uuid.uuid4().hex
+    lines = []
+
+    for name, value in (fields or {}).items():
+        lines.append(f"--{boundary}".encode("utf-8"))
+        lines.append(f'Content-Disposition: form-data; name="{name}"'.encode("utf-8"))
+        lines.append(b"")
+        if isinstance(value, str):
+            lines.append(value.encode("utf-8"))
+        else:
+            lines.append(str(value).encode("utf-8"))
+
+    for name, (filename, file_value, content_type) in (files or {}).items():
+        if isinstance(file_value, bytes):
+            file_content = file_value
+        else:
+            file_content = file_value.read()
+
+        lines.append(f"--{boundary}".encode("utf-8"))
+        lines.append(
+            f'Content-Disposition: form-data; name="{name}"; filename="{filename}"'.encode(
+                "utf-8"
+            )
+        )
+        lines.append(
+            f"Content-Type: {content_type or 'application/octet-stream'}".encode("utf-8")
+        )
+        lines.append(b"")
+        lines.append(file_content)
+
+    lines.append(f"--{boundary}--".encode("utf-8"))
+    lines.append(b"")
+    body = b"\r\n".join(lines)
+    content_type = f"multipart/form-data; boundary={boundary}"
+    return body, content_type
+
+
+def http_request(method, url, params=None, json_data=None, files=None, timeout=5, headers=None):
+    if params:
+        url = f"{url}?{urllib.parse.urlencode(params)}"
+
+    body = None
+    request_headers = dict(headers or {})
+
+    if json_data is not None:
+        body = json.dumps(json_data).encode("utf-8")
+        request_headers["Content-Type"] = "application/json"
+    elif files is not None:
+        body, multipart_content_type = encode_multipart_formdata({}, files)
+        request_headers["Content-Type"] = multipart_content_type
+
+    req = urllib.request.Request(url, data=body, headers=request_headers, method=method)
     try:
-        r = requests.get(f"{BACKEND_URL}{path}", params=params, timeout=5)
-        r.raise_for_status()
-        return r.json()
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            content = resp.read()
+            status = resp.getcode()
+            content_type = resp.headers.get("Content-Type", "")
+            return content, status, content_type
+    except HTTPError as err:
+        try:
+            content = err.read()
+        except Exception:
+            content = b""
+        status = err.code
+        content_type = getattr(err, "headers", {}).get("Content-Type", "")
+        return content, status, content_type
+    except URLError:
+        return None, None, None
+
+
+def parse_json(content):
+    if not content:
+        return None
+    try:
+        return json.loads(content.decode("utf-8"))
     except Exception:
         return None
 
 
+def backend_get(path, params=None):
+    content, status, _ = http_request("GET", f"{BACKEND_URL}{path}", params=params, timeout=5)
+    if content is None or status is None or status >= 400:
+        return None
+    return parse_json(content)
+
+
 def backend_post(path, data):
-    try:
-        r = requests.post(f"{BACKEND_URL}{path}", json=data, timeout=5)
-        r.raise_for_status()
-        return r.json(), r.status_code
-    except requests.HTTPError as e:
-        return None, e.response.status_code if e.response else 500
-    except Exception:
+    content, status, _ = http_request(
+        "POST",
+        f"{BACKEND_URL}{path}",
+        json_data=data,
+        timeout=5,
+    )
+    if content is None or status is None:
         return None, 500
+    result = parse_json(content)
+    if status >= 400:
+        return None, status
+    return result, status
+
+
+def backend_put(path, data):
+    content, status, _ = http_request(
+        "PUT",
+        f"{BACKEND_URL}{path}",
+        json_data=data,
+        timeout=5,
+    )
+    if content is None or status is None:
+        return None, 500
+    return parse_json(content), status
+
+
+def backend_delete(path):
+    _, status, _ = http_request("DELETE", f"{BACKEND_URL}{path}", timeout=5)
+    return status if status is not None else 500
 
 
 def sidebar_data():
@@ -97,12 +201,10 @@ def search():
 
 @app.route("/uploads/<path:filename>")
 def proxy_upload(filename):
-    try:
-        r = requests.get(f"{BACKEND_URL}/uploads/{filename}", timeout=10)
-        content_type = r.headers.get("Content-Type", "image/jpeg")
-        return Response(r.content, mimetype=content_type)
-    except Exception:
+    content, status, content_type = http_request("GET", f"{BACKEND_URL}/uploads/{filename}", timeout=10)
+    if content is None or status != 200:
         return Response(b"", status=404)
+    return Response(content, mimetype=content_type or "image/jpeg")
 
 
 # ── Proxy: single box JSON ────────────────────────────────────────────────
@@ -119,11 +221,10 @@ def get_box_json(box_id):
 
 @app.route("/api/boxes/<int:box_id>/qr")
 def box_qr(box_id):
-    try:
-        r = requests.get(f"{BACKEND_URL}/api/boxes/{box_id}/qr", timeout=10)
-        return Response(r.content, mimetype="image/png")
-    except Exception:
+    content, status, _ = http_request("GET", f"{BACKEND_URL}/api/boxes/{box_id}/qr", timeout=10)
+    if content is None or status != 200:
         return Response(b"", status=503)
+    return Response(content, mimetype="image/png")
 
 
 # ── Proxy: image upload ────────────────────────────────────────────────────
@@ -134,17 +235,17 @@ def upload_box_image(box_id):
         return jsonify({"error": "No file"}), 400
     f = request.files["file"]
     print(f"[proxy] uploading box {box_id} image: filename={f.filename!r}", flush=True)
-    try:
-        r = requests.post(
-            f"{BACKEND_URL}/api/boxes/{box_id}/image",
-            files={"file": (f.filename, f.stream, f.content_type)},
-            timeout=15,
-        )
-        print(f"[proxy] backend responded {r.status_code}", flush=True)
-        return jsonify(r.json()), r.status_code
-    except Exception as e:
-        print(f"[proxy] upload_box_image error: {e}", flush=True)
+    file_bytes = f.read()
+    content, status, _ = http_request(
+        "POST",
+        f"{BACKEND_URL}/api/boxes/{box_id}/image",
+        files={"file": (f.filename, file_bytes, f.content_type)},
+        timeout=15,
+    )
+    print(f"[proxy] backend responded {status}", flush=True)
+    if content is None or status is None:
         return jsonify({"error": "Upload failed"}), 500
+    return jsonify(parse_json(content) or {}), status
 
 
 @app.route("/api/items/<int:item_id>/image", methods=["POST"])
@@ -153,17 +254,17 @@ def upload_item_image(item_id):
         return jsonify({"error": "No file"}), 400
     f = request.files["file"]
     print(f"[proxy] uploading item {item_id} image: filename={f.filename!r}", flush=True)
-    try:
-        r = requests.post(
-            f"{BACKEND_URL}/api/items/{item_id}/image",
-            files={"file": (f.filename, f.stream, f.content_type)},
-            timeout=15,
-        )
-        print(f"[proxy] backend responded {r.status_code}", flush=True)
-        return jsonify(r.json()), r.status_code
-    except Exception as e:
-        print(f"[proxy] upload_item_image error: {e}", flush=True)
+    file_bytes = f.read()
+    content, status, _ = http_request(
+        "POST",
+        f"{BACKEND_URL}/api/items/{item_id}/image",
+        files={"file": (f.filename, file_bytes, f.content_type)},
+        timeout=15,
+    )
+    print(f"[proxy] backend responded {status}", flush=True)
+    if content is None or status is None:
         return jsonify({"error": "Upload failed"}), 500
+    return jsonify(parse_json(content) or {}), status
 
 
 # ── Proxy: create ──────────────────────────────────────────────────────────
@@ -191,41 +292,33 @@ def create_item():
 @app.route("/api/boxes/<int:box_id>", methods=["PUT"])
 def update_box(box_id):
     data = request.get_json(silent=True) or {}
-    try:
-        r = requests.put(f"{BACKEND_URL}/api/boxes/{box_id}", json=data, timeout=5)
-        return jsonify(r.json()), r.status_code
-    except Exception:
+    result, status = backend_put(f"/api/boxes/{box_id}", data)
+    if status is None or status >= 500:
         return jsonify({"error": "Update failed"}), 500
+    return jsonify(result or {}), status
 
 
 @app.route("/api/items/<int:item_id>", methods=["PUT"])
 def update_item(item_id):
     data = request.get_json(silent=True) or {}
-    try:
-        r = requests.put(f"{BACKEND_URL}/api/items/{item_id}", json=data, timeout=5)
-        return jsonify(r.json()), r.status_code
-    except Exception:
+    result, status = backend_put(f"/api/items/{item_id}", data)
+    if status is None or status >= 500:
         return jsonify({"error": "Update failed"}), 500
+    return jsonify(result or {}), status
 
 
 # ── Proxy: delete (DELETE) ─────────────────────────────────────────────────
 
 @app.route("/api/boxes/<int:box_id>", methods=["DELETE"])
 def delete_box(box_id):
-    try:
-        r = requests.delete(f"{BACKEND_URL}/api/boxes/{box_id}", timeout=5)
-        return Response(status=r.status_code)
-    except Exception:
-        return Response(status=500)
+    status = backend_delete(f"/api/boxes/{box_id}")
+    return Response(status=status)
 
 
 @app.route("/api/items/<int:item_id>", methods=["DELETE"])
 def delete_item(item_id):
-    try:
-        r = requests.delete(f"{BACKEND_URL}/api/items/{item_id}", timeout=5)
-        return Response(status=r.status_code)
-    except Exception:
-        return Response(status=500)
+    status = backend_delete(f"/api/items/{item_id}")
+    return Response(status=status)
 
 
 if __name__ == "__main__":

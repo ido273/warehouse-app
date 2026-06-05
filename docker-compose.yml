@@ -3,6 +3,11 @@ services:
     build: ./frontend
     ports:
       - "3000:8080"
+    volumes:
+      - ./frontend:/app
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: "1"
 
   backend:
     build: ./backend

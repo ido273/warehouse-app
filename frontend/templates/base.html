@@ -178,10 +178,14 @@
     /* ── MAIN ── */
     .main {
       margin-top: var(--nav-h);
+      margin-left: 0;
+      margin-right: 0;
       padding: 2rem 2.25rem;
-      max-width: 1280px;
-      margin-left: auto;
-      margin-right: auto;
+      box-sizing: border-box;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     /* ── CARDS ── */
@@ -233,6 +237,7 @@
       flex-shrink: 0;
       transition: background 0.2s;
     }
+    .card-icon-img { overflow: hidden; padding: 0; }
     a:hover .card-icon { background: rgba(124, 106, 247, 0.22); }
     .card-body { min-width: 0; }
     .card-title {
@@ -1161,7 +1166,9 @@
 
 <!-- MAIN -->
 <main class="main">
-  {% block content %}{% endblock %}
+  <div style="width:100%;max-width:1200px;margin:0 auto;">
+    {% block content %}{% endblock %}
+  </div>
 </main>
 
 <!-- FAB -->
