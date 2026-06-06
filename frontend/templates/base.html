@@ -72,6 +72,32 @@
 
     .nav-spacer { flex: 1; }
 
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      max-width: 200px;
+    }
+    .nav-user-email {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-user .role-chip {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(124, 106, 247, 0.18);
+      color: var(--accent);
+      flex-shrink: 0;
+      text-transform: capitalize;
+    }
+    @media (max-width: 480px) { .nav-user { display: none; } }
+
     .nav-search {
       display: flex;
       align-items: center;
@@ -1101,16 +1127,32 @@
 </head>
 <body>
 
+<!-- ROLE CHANGE BANNER -->
+<div id="role-change-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#ef5350;color:white;text-align:center;padding:0.65rem 1rem;font-size:0.875rem;font-weight:600;">
+  <i class="fa-solid fa-rotate" style="margin-right:0.4rem;"></i>
+  Your permissions have been updated. Refreshing…
+</div>
+
 <!-- NAV -->
 <nav class="navbar">
-  <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu" style="position:relative;">
     <i class="fa-solid fa-bars"></i>
+    <span id="pending-badge" style="display:none;position:absolute;top:3px;right:3px;background:#ef5350;color:white;border-radius:50%;min-width:16px;height:16px;font-size:0.6rem;font-weight:800;line-height:16px;text-align:center;padding:0 2px;"></span>
   </button>
   <a href="/" class="logo">
     <i class="fa-solid fa-warehouse"></i>
     WarehouseMS
   </a>
   <div class="nav-spacer"></div>
+  {% if current_user %}
+  <div class="nav-user">
+    <i class="fa-solid fa-circle-user" style="font-size:1rem;color:var(--accent);flex-shrink:0;"></i>
+    <span class="nav-user-email">{{ current_user.display_name or current_user.email }}</span>
+    {% if active_workspace_role or current_user.role %}
+    <span class="role-chip">{{ active_workspace_role or current_user.role }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
   <form class="nav-search" action="/search" method="get" role="search">
     <i class="fa-solid fa-magnifying-glass"></i>
     <input type="text" name="q" placeholder="Quick search…"
@@ -1151,15 +1193,82 @@
 
   <hr class="sidebar-divider">
   <div>
+    <div class="sidebar-label">Workspace</div>
+    <div class="sidebar-link" style="cursor:default;gap:0.55rem;">
+      <i class="fa-solid fa-building" style="color:var(--accent);"></i>
+      <span style="overflow:hidden;text-overflow:ellipsis;font-weight:600;">{{ active_workspace_name }}</span>
+    </div>
+    {% if workspaces|length > 1 %}
+    {% for ws in workspaces %}
+    <a href="/switch-workspace/{{ ws.workspace_id }}"
+       class="sidebar-link {% if ws.workspace_id == active_workspace_id %}active{% endif %}"
+       style="padding-left:2rem;font-size:0.82rem;">
+      <i class="fa-solid {% if ws.workspace_id == active_workspace_id %}fa-check{% else %}fa-circle{% endif %}"
+         style="font-size:0.5rem;"></i>
+      {{ ws.workspace_name }}
+    </a>
+    {% endfor %}
+    {% endif %}
+    <a href="/onboarding" class="sidebar-link" style="font-size:0.82rem;">
+      <i class="fa-solid fa-plus"></i> New / Join Workspace
+    </a>
+    {% if active_workspace_role == 'admin' and active_workspace_invite %}
+    <div style="padding:0.45rem 1.25rem 0.6rem;">
+      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem;">Invite Code</div>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <code id="sidebar-invite-code" style="font-size:0.9rem;font-weight:800;color:var(--accent);letter-spacing:0.18em;font-family:monospace;">{{ active_workspace_invite }}</code>
+        <button onclick="copySidebarInviteCode()" title="Copy invite code"
+                style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:0.18rem 0.45rem;cursor:pointer;font-size:0.72rem;transition:all 0.15s;"
+                onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
+                onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+          <i class="fa-solid fa-copy"></i>
+        </button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if active_workspace_role == 'admin' %}
+  <hr class="sidebar-divider">
+  <div>
     <div class="sidebar-label">Admin</div>
-    <a href="#" class="sidebar-link" onclick="alert('Coming soon'); return false;">
+    <a href="#" class="sidebar-link" onclick="openManageLocationsModal(); closeSidebar(); return false;">
       <i class="fa-solid fa-map-pin"></i> Manage Locations
     </a>
-    <a href="#" class="sidebar-link" onclick="alert('Coming soon'); return false;">
-      <i class="fa-solid fa-users"></i> Manage Users
+    <a href="#" class="sidebar-link" onclick="openPendingRequestsModal(); closeSidebar(); return false;" style="justify-content:space-between;">
+      <span><i class="fa-solid fa-clock"></i> Pending Requests</span>
+      <span id="sidebar-pending-count" style="display:none;background:#ef5350;color:white;border-radius:999px;padding:0.1rem 0.45rem;font-size:0.65rem;font-weight:800;margin-left:0.35rem;"></span>
     </a>
-    <a href="#" class="sidebar-link" onclick="alert('Coming soon'); return false;">
+    <a href="#" class="sidebar-link" onclick="openSettingsModal(); closeSidebar(); return false;">
       <i class="fa-solid fa-gear"></i> Settings
+    </a>
+  </div>
+  {% endif %}
+
+  {% if active_workspace_role %}
+  <hr class="sidebar-divider">
+  <div>
+    <div class="sidebar-label">Export</div>
+    <a href="/api/export/csv" class="sidebar-link">
+      <i class="fa-solid fa-file-csv"></i> Export CSV
+    </a>
+    <a href="/api/export/excel" class="sidebar-link">
+      <i class="fa-solid fa-file-excel"></i> Export Excel
+    </a>
+  </div>
+  {% endif %}
+
+  <hr class="sidebar-divider">
+  <div>
+    <div class="sidebar-label">Account</div>
+    {% if current_user %}
+    <div class="sidebar-link" style="cursor:default;opacity:0.7;">
+      <i class="fa-solid fa-circle-user"></i>
+      <span style="overflow:hidden;text-overflow:ellipsis;">{{ current_user.display_name or current_user.email }}</span>
+    </div>
+    {% endif %}
+    <a href="/logout" class="sidebar-link" style="color:#ef9a9a;">
+      <i class="fa-solid fa-right-from-bracket" style="color:#ef9a9a;"></i> Sign Out
     </a>
   </div>
 </aside>
@@ -1172,9 +1281,11 @@
 </main>
 
 <!-- FAB -->
+{% if active_workspace_role and active_workspace_role != 'viewer' %}
 <button class="fab" onclick="openAddModal()" title="Add box or item" aria-label="Add new">
   <i class="fa-solid fa-plus"></i>
 </button>
+{% endif %}
 
 <!-- ADD MODAL -->
 <div class="modal-backdrop" id="addModal" role="dialog" aria-modal="true" aria-label="Add new">
@@ -1205,8 +1316,12 @@
         <input class="form-input" type="text" id="box-name" placeholder="e.g. Electronics Box" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label" for="box-location">Location</label>
-        <input class="form-input" type="text" id="box-location" placeholder="e.g. Shelf A3" autocomplete="off">
+        <label class="form-label">Location</label>
+        <select class="form-input" id="box-location-select" onchange="onLocSelectChange('box-location')">
+          <option value="">No location</option>
+        </select>
+        <input class="form-input" type="text" id="box-location-custom" placeholder="New location name…"
+               style="display:none;margin-top:0.35rem;" autocomplete="off">
       </div>
       <div class="form-group">
         <label class="form-label">
@@ -1240,8 +1355,18 @@
           <input class="form-input" type="text" id="item-category" placeholder="e.g. Electronics" autocomplete="off">
         </div>
         <div class="form-group">
-          <label class="form-label" for="item-location">Location</label>
-          <input class="form-input" type="text" id="item-location" placeholder="e.g. Drawer 3" autocomplete="off">
+          <label class="form-label" for="item-quantity">Quantity</label>
+          <input class="form-input" type="number" id="item-quantity" min="1" value="1" style="width:120px;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <select class="form-input" id="item-location-select" onchange="onLocSelectChange('item-location')">
+            <option value="">No location</option>
+          </select>
+          <input class="form-input" type="text" id="item-location-custom" placeholder="New location name…"
+                 style="display:none;margin-top:0.35rem;" autocomplete="off">
+          <input class="form-input location-from-box" type="text" id="item-location-box"
+                 readonly style="display:none;margin-top:0.35rem;" placeholder="Inherited from box">
         </div>
         <div class="form-group">
           <label class="form-label" for="item-box-select">Box</label>
@@ -1339,8 +1464,12 @@
         <input class="form-input" type="text" id="edit-box-name" placeholder="e.g. Electronics Box" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label" for="edit-box-location">Location</label>
-        <input class="form-input" type="text" id="edit-box-location" placeholder="e.g. Shelf A3" autocomplete="off">
+        <label class="form-label">Location</label>
+        <select class="form-input" id="edit-box-location-select" onchange="onLocSelectChange('edit-box-location')">
+          <option value="">No location</option>
+        </select>
+        <input class="form-input" type="text" id="edit-box-location-custom" placeholder="New location name…"
+               style="display:none;margin-top:0.35rem;" autocomplete="off">
       </div>
       <div class="form-group">
         <label class="form-label">
@@ -1371,8 +1500,18 @@
         <input class="form-input" type="text" id="edit-item-category" placeholder="e.g. Electronics" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label" for="edit-item-location">Location</label>
-        <input class="form-input" type="text" id="edit-item-location" placeholder="e.g. Drawer 3" autocomplete="off">
+        <label class="form-label" for="edit-item-quantity">Quantity</label>
+        <input class="form-input" type="number" id="edit-item-quantity" min="1" value="1" style="width:120px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <select class="form-input" id="edit-item-location-select" onchange="onLocSelectChange('edit-item-location')">
+          <option value="">No location</option>
+        </select>
+        <input class="form-input" type="text" id="edit-item-location-custom" placeholder="New location name…"
+               style="display:none;margin-top:0.35rem;" autocomplete="off">
+        <input class="form-input location-from-box" type="text" id="edit-item-location-box"
+               readonly style="display:none;margin-top:0.35rem;" placeholder="Inherited from box">
       </div>
       <div class="form-group">
         <label class="form-label" for="edit-item-box-select">Box</label>
@@ -1411,6 +1550,95 @@
   </div>
 </div>
 
+<!-- MANAGE LOCATIONS MODAL -->
+<div class="modal-backdrop" id="manageLocationsModal" role="dialog" aria-modal="true" aria-label="Manage Locations">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="fa-solid fa-map-pin" style="color:var(--accent);margin-right:0.3rem;"></i>
+        Manage Locations
+      </span>
+      <button class="modal-close" onclick="closeManageLocationsModal()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.25rem;">
+      <input class="form-input" type="text" id="new-location-input" placeholder="New location name…" style="flex:1;" onkeydown="if(event.key==='Enter')addLocation()">
+      <button class="btn btn-primary" onclick="addLocation()" style="flex-shrink:0;">
+        <i class="fa-solid fa-plus"></i> Add
+      </button>
+    </div>
+    <div id="locations-list">
+      <div style="color:var(--muted);font-size:0.875rem;padding:1rem 0;text-align:center;">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="modal" style="max-width:560px;overflow-y:auto;max-height:85vh;">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="fa-solid fa-gear" style="color:var(--accent);margin-right:0.3rem;"></i>
+        Workspace Settings
+      </span>
+      <button class="modal-close" onclick="closeSettingsModal()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Workspace Name</label>
+      <div style="display:flex;gap:0.5rem;">
+        <input class="form-input" type="text" id="settings-ws-name" placeholder="Workspace name…" style="flex:1;">
+        <button class="btn btn-primary" onclick="saveWorkspaceName()" style="flex-shrink:0;">
+          <i class="fa-solid fa-floppy-disk"></i> Save
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Invite Code</label>
+      <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <code id="settings-invite-code" style="font-size:1rem;font-weight:800;color:var(--accent);letter-spacing:0.2em;font-family:monospace;flex-shrink:0;"></code>
+        <button class="btn btn-ghost" style="padding:0.35rem 0.75rem;font-size:0.78rem;" onclick="copySettingsInviteCode()">
+          <i class="fa-solid fa-copy"></i> Copy
+        </button>
+        <button class="btn btn-ghost" style="padding:0.35rem 0.75rem;font-size:0.78rem;border-color:rgba(239,83,80,0.3);color:var(--muted);" onclick="regenerateInviteCode()">
+          <i class="fa-solid fa-arrows-rotate"></i> Regenerate
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="form-label" style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.75rem;">
+        <i class="fa-solid fa-users" style="color:var(--accent);margin-right:0.35rem;"></i>Members
+      </label>
+      <div id="settings-members-list">
+        <div style="color:var(--muted);font-size:0.875rem;padding:0.5rem 0;text-align:center;">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PENDING REQUESTS MODAL -->
+<div class="modal-backdrop" id="pendingReqModal" role="dialog" aria-modal="true" aria-label="Pending Requests">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="fa-solid fa-clock" style="color:var(--accent);margin-right:0.3rem;"></i>
+        Pending Join Requests
+      </span>
+      <button class="modal-close" onclick="closePendingRequestsModal()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="pending-req-list">
+      <div style="color:var(--muted);font-size:0.875rem;padding:1rem 0;text-align:center;">Loading...</div>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
@@ -1432,9 +1660,81 @@
 
   // ── Modal ──
   let needsReload = false;
+  const ACTIVE_WS_ROLE = '{{ active_workspace_role or "" }}';
 
-  function openAddModal() {
+  // ── Location dropdown helpers ──
+  function onLocSelectChange(prefix) {
+    const sel = document.getElementById(prefix + '-select');
+    if (!sel) return;
+    if (sel.value === '__new__') {
+      sel.style.display = 'none';
+      const cus = document.getElementById(prefix + '-custom');
+      if (cus) { cus.style.display = ''; cus.focus(); }
+    }
+  }
+
+  function getLocValue(prefix) {
+    const boxInp = document.getElementById(prefix + '-box');
+    if (boxInp && boxInp.style.display !== 'none') return boxInp.value.trim() || null;
+    const sel = document.getElementById(prefix + '-select');
+    if (sel && sel.style.display === 'none') {
+      const cus = document.getElementById(prefix + '-custom');
+      return cus ? cus.value.trim() || null : null;
+    }
+    return sel ? sel.value || null : null;
+  }
+
+  function resetLocField(prefix) {
+    const sel = document.getElementById(prefix + '-select');
+    const cus = document.getElementById(prefix + '-custom');
+    const box = document.getElementById(prefix + '-box');
+    if (sel) { sel.value = ''; sel.style.display = ''; }
+    if (cus) { cus.value = ''; cus.style.display = 'none'; }
+    if (box) { box.value = ''; box.style.display = 'none'; }
+  }
+
+  async function populateLocationDropdowns(locs) {
+    const prefixes = ['box-location', 'item-location', 'edit-box-location', 'edit-item-location'];
+    const canCreate = ['admin', 'manager'].includes(ACTIVE_WS_ROLE);
+    for (const pfx of prefixes) {
+      const sel = document.getElementById(pfx + '-select');
+      if (!sel) continue;
+      const curVal = sel.value;
+      sel.innerHTML = '<option value="">No location</option>';
+      for (const loc of locs) {
+        const opt = document.createElement('option');
+        opt.value = loc.name;
+        opt.textContent = loc.name;
+        sel.appendChild(opt);
+      }
+      if (canCreate) {
+        const newOpt = document.createElement('option');
+        newOpt.value = '__new__';
+        newOpt.textContent = '＋ New location…';
+        sel.appendChild(newOpt);
+      }
+      if (curVal && curVal !== '__new__') sel.value = curVal;
+    }
+  }
+
+  async function ensureLocationCreated(name) {
+    if (!name) return;
+    try {
+      await fetch('/api/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+    } catch {}
+  }
+
+  async function openAddModal() {
     document.getElementById('addModal').classList.add('show');
+    try {
+      const r = await fetch('/api/locations');
+      const locs = r.ok ? await r.json() : [];
+      await populateLocationDropdowns(locs);
+    } catch {}
   }
 
   function closeAddModal() {
@@ -1452,10 +1752,11 @@
     document.getElementById('item-fields').style.display = 'block';
     document.getElementById('item-confirm').style.display = 'none';
     document.getElementById('box-name').value = '';
-    document.getElementById('box-location').value = '';
+    resetLocField('box-location');
     document.getElementById('item-name').value = '';
     document.getElementById('item-category').value = '';
-    document.getElementById('item-location').value = '';
+    document.getElementById('item-quantity').value = '1';
+    resetLocField('item-location');
     document.getElementById('item-box-select').value = '';
     clearTagChips();
     resetImgArea('box-image', 'box-image-area');
@@ -1519,10 +1820,14 @@
 
   // ── Create Box ──
   async function createBox() {
-    const name     = document.getElementById('box-name').value.trim();
-    const boxLoc   = document.getElementById('box-location').value.trim();
-    const imgInput = document.getElementById('box-image');
+    const name      = document.getElementById('box-name').value.trim();
+    const boxLoc    = getLocValue('box-location');
+    const boxLocSel = document.getElementById('box-location-select');
+    const imgInput  = document.getElementById('box-image');
     if (!name) { showToast('Box name is required', 'error'); return; }
+    if (boxLocSel && boxLocSel.style.display === 'none') {
+      await ensureLocationCreated(boxLoc);
+    }
     try {
       const r = await fetch('/api/boxes', {
         method: 'POST',
@@ -1531,19 +1836,29 @@
       });
       if (r.ok) {
         const newBox = await r.json();
-        // Upload image if provided
         if (imgInput.files && imgInput.files[0]) {
           await uploadEntityImage('boxes', newBox.id, imgInput.files[0]);
         }
         needsReload = true;
         showToast('Box created — now add items to it!');
-        // Inject the new box into the dropdown and pre-select it
         const sel = document.getElementById('item-box-select');
         const opt = new Option(`${newBox.name} (${newBox.code})`, newBox.id);
         sel.add(opt);
         sel.value = String(newBox.id);
-        // Switch to item tab automatically
         switchTab('item');
+        const itemLocBoxInp = document.getElementById('item-location-box');
+        const itemLocSel    = document.getElementById('item-location-select');
+        const itemLocCus    = document.getElementById('item-location-custom');
+        if (newBox.location && itemLocBoxInp) {
+          itemLocBoxInp.value = newBox.location;
+          itemLocBoxInp.style.display = '';
+          if (itemLocSel) itemLocSel.style.display = 'none';
+          if (itemLocCus) itemLocCus.style.display = 'none';
+        } else {
+          if (itemLocBoxInp) itemLocBoxInp.style.display = 'none';
+          if (itemLocSel)    itemLocSel.style.display = '';
+          if (itemLocCus)    itemLocCus.style.display = 'none';
+        }
         document.getElementById('item-name').focus();
       } else {
         const err = await r.json().catch(() => ({}));
@@ -1554,13 +1869,17 @@
 
   // ── Create Item ──
   async function createItem() {
-    const name     = document.getElementById('item-name').value.trim();
-    const category = document.getElementById('item-category').value.trim();
-    const itemLoc  = document.getElementById('item-location').value.trim();
-    const boxId    = document.getElementById('item-box-select').value;
-    const imgInput = document.getElementById('item-image');
-    const tags     = [...tagsList];
+    const name       = document.getElementById('item-name').value.trim();
+    const category   = document.getElementById('item-category').value.trim();
+    const itemLoc    = getLocValue('item-location');
+    const itemLocSel = document.getElementById('item-location-select');
+    const boxId      = document.getElementById('item-box-select').value;
+    const imgInput   = document.getElementById('item-image');
+    const tags       = [...tagsList];
     if (!name) { showToast('Item name is required', 'error'); return; }
+    if (itemLocSel && itemLocSel.style.display === 'none') {
+      await ensureLocationCreated(itemLoc);
+    }
     try {
       const r = await fetch('/api/items', {
         method: 'POST',
@@ -1570,17 +1889,16 @@
           category: category || null,
           location: itemLoc || null,
           box_id: boxId ? parseInt(boxId, 10) : null,
+          quantity: parseInt(document.getElementById('item-quantity').value, 10) || 1,
           tags
         })
       });
       if (r.ok) {
         const newItem = await r.json();
-        // Upload image if provided
         if (imgInput.files && imgInput.files[0]) {
           await uploadEntityImage('items', newItem.id, imgInput.files[0]);
         }
         needsReload = true;
-        // Show confirmation panel
         document.getElementById('item-fields').style.display = 'none';
         document.getElementById('item-confirm').style.display = 'block';
       } else {
@@ -1595,13 +1913,15 @@
     const savedBoxId = document.getElementById('item-box-select').value;
     document.getElementById('item-name').value     = '';
     document.getElementById('item-category').value = '';
-    document.getElementById('item-location').value = '';
+    resetLocField('item-location');
     document.getElementById('item-box-select').value = savedBoxId;
     clearTagChips();
+    document.getElementById('item-quantity').value = '1';
     resetImgArea('item-image', 'item-image-area');
     document.getElementById('item-confirm').style.display = 'none';
     document.getElementById('item-fields').style.display  = 'block';
     document.getElementById('item-name').focus();
+    if (savedBoxId) syncBoxLocation('item-box-select', 'item-location');
   }
 
   // Called from confirmation panel: close + reload
@@ -1774,21 +2094,31 @@
   }
 
   // ── Location auto-fill from box ──
-  async function syncBoxLocation(selectId, locInputId) {
+  async function syncBoxLocation(selectId, prefix) {
     const boxId  = document.getElementById(selectId).value;
-    const locInp = document.getElementById(locInputId);
+    const sel    = document.getElementById(prefix + '-select');
+    const cus    = document.getElementById(prefix + '-custom');
+    const boxInp = document.getElementById(prefix + '-box');
     if (!boxId) {
-      locInp.removeAttribute('readonly');
-      locInp.classList.remove('location-from-box');
+      if (boxInp) { boxInp.style.display = 'none'; boxInp.value = ''; }
+      if (cus)    { cus.style.display = 'none'; }
+      if (sel)    { sel.style.display = ''; }
       return;
     }
     try {
       const r = await fetch(`/api/boxes/${boxId}`);
       if (!r.ok) return;
       const box = await r.json();
-      locInp.value = box.location || '';
-      locInp.setAttribute('readonly', '');
-      locInp.classList.add('location-from-box');
+      if (box.location && boxInp) {
+        boxInp.value = box.location;
+        boxInp.style.display = '';
+        if (sel) sel.style.display = 'none';
+        if (cus) cus.style.display = 'none';
+      } else {
+        if (boxInp) { boxInp.value = ''; boxInp.style.display = 'none'; }
+        if (cus)    cus.style.display = 'none';
+        if (sel)    sel.style.display = '';
+      }
     } catch {}
   }
 
@@ -1882,7 +2212,7 @@
   }
 
   // ── Edit modal ──
-  function openEditModal() {
+  async function openEditModal() {
     document.getElementById('cardDropdown').classList.remove('open');
     activeMenuBtn = null;
     const d = menuData;
@@ -1891,22 +2221,46 @@
       `<i class="fa-solid fa-pen-to-square" style="color:var(--accent);margin-right:0.3rem;"></i> Edit ${isBox ? 'Box' : 'Item'}`;
     document.getElementById('edit-box-form').style.display  = isBox ? 'block' : 'none';
     document.getElementById('edit-item-form').style.display = isBox ? 'none'  : 'block';
+
+    // Populate location dropdowns
+    try {
+      const r = await fetch('/api/locations');
+      const locs = r.ok ? await r.json() : [];
+      await populateLocationDropdowns(locs);
+    } catch {}
+
     if (isBox) {
-      document.getElementById('edit-box-name').value     = d.name     || '';
-      document.getElementById('edit-box-location').value = d.location || '';
+      document.getElementById('edit-box-name').value = d.name || '';
+      resetLocField('edit-box-location');
+      const locSel = document.getElementById('edit-box-location-select');
+      if (d.location && locSel) {
+        locSel.value = d.location;
+        if (locSel.value !== d.location) {
+          locSel.style.display = 'none';
+          const locCus = document.getElementById('edit-box-location-custom');
+          if (locCus) { locCus.style.display = ''; locCus.value = d.location; }
+        }
+      }
       resetImgArea('edit-box-image', 'edit-box-image-area');
     } else {
       document.getElementById('edit-item-name').value     = d.name     || '';
       document.getElementById('edit-item-category').value = d.category || '';
+      document.getElementById('edit-item-quantity').value = d.quantity  || 1;
       const selBoxId = d.boxId || '';
       document.getElementById('edit-item-box-select').value = selBoxId;
       if (selBoxId) {
-        syncBoxLocation('edit-item-box-select', 'edit-item-location');
+        await syncBoxLocation('edit-item-box-select', 'edit-item-location');
       } else {
-        const locInp = document.getElementById('edit-item-location');
-        locInp.value = d.location || '';
-        locInp.removeAttribute('readonly');
-        locInp.classList.remove('location-from-box');
+        resetLocField('edit-item-location');
+        const locSel = document.getElementById('edit-item-location-select');
+        if (d.location && locSel) {
+          locSel.value = d.location;
+          if (locSel.value !== d.location) {
+            locSel.style.display = 'none';
+            const locCus = document.getElementById('edit-item-location-custom');
+            if (locCus) { locCus.style.display = ''; locCus.value = d.location; }
+          }
+        }
       }
       editTagsList.length = 0;
       try {
@@ -1930,19 +2284,26 @@
     let payload, imgInput;
 
     if (isBox) {
+      const locVal    = getLocValue('edit-box-location');
+      const locSelEl  = document.getElementById('edit-box-location-select');
+      if (locSelEl && locSelEl.style.display === 'none') await ensureLocationCreated(locVal);
       payload = {
         name:     document.getElementById('edit-box-name').value.trim(),
-        location: document.getElementById('edit-box-location').value.trim() || null,
+        location: locVal,
       };
       imgInput = document.getElementById('edit-box-image');
       if (!payload.name) { showToast('Box name is required', 'error'); return; }
     } else {
-      const boxId = document.getElementById('edit-item-box-select').value;
+      const boxId     = document.getElementById('edit-item-box-select').value;
+      const locVal    = getLocValue('edit-item-location');
+      const locSelEl  = document.getElementById('edit-item-location-select');
+      if (locSelEl && locSelEl.style.display === 'none') await ensureLocationCreated(locVal);
       payload = {
         name:     document.getElementById('edit-item-name').value.trim(),
         category: document.getElementById('edit-item-category').value.trim() || null,
-        location: document.getElementById('edit-item-location').value.trim() || null,
+        location: locVal,
         box_id:   boxId ? parseInt(boxId, 10) : null,
+        quantity: parseInt(document.getElementById('edit-item-quantity').value, 10) || 1,
         tags:     [...editTagsList],
       };
       imgInput = document.getElementById('edit-item-image');
@@ -1971,6 +2332,443 @@
     } catch { showToast('Network error', 'error'); }
   }
 
+  // ── Invite code copy ──
+  function copySidebarInviteCode() {
+    const code = document.getElementById('sidebar-invite-code')?.textContent?.trim();
+    if (code) navigator.clipboard.writeText(code).then(() => showToast('Invite code copied!'));
+  }
+  function copySettingsInviteCode() {
+    const code = document.getElementById('settings-invite-code')?.textContent?.trim();
+    if (code) navigator.clipboard.writeText(code).then(() => showToast('Invite code copied!'));
+  }
+
+  // ── Manage Locations Modal ──
+  const ROLES_OPTIONS = ['admin', 'manager', 'contributor', 'viewer'];
+
+  async function openManageLocationsModal() {
+    document.getElementById('manageLocationsModal').classList.add('show');
+    await loadLocations();
+  }
+  function closeManageLocationsModal() {
+    document.getElementById('manageLocationsModal').classList.remove('show');
+    document.getElementById('new-location-input').value = '';
+  }
+
+  async function loadLocations() {
+    const list = document.getElementById('locations-list');
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;padding:0.75rem 0;text-align:center;">Loading…</div>';
+    try {
+      const r    = await fetch('/api/locations');
+      const locs = r.ok ? await r.json() : [];
+      if (!locs.length) {
+        list.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;padding:0.75rem 0;text-align:center;">No locations yet.</div>';
+        return;
+      }
+      const canDelete = ACTIVE_WS_ROLE === 'admin';
+      list.innerHTML = locs.map(loc => {
+        const bc = loc.box_count  || 0;
+        const ic = loc.item_count || 0;
+        const parts = [];
+        if (bc) parts.push(`${bc} box${bc !== 1 ? 'es' : ''}`);
+        if (ic) parts.push(`${ic} item${ic !== 1 ? 's' : ''}`);
+        const countStr = parts.join(', ') || 'Empty';
+        const delBtn = canDelete
+          ? `<button class="btn btn-ghost" style="padding:0.3rem 0.65rem;font-size:0.75rem;border-color:rgba(239,83,80,0.35);color:#ef9a9a;"
+                     onclick="confirmDeleteLocation(${loc.id}, '${escHtml(loc.name)}', ${bc}, ${ic})" title="Delete location">
+               <i class="fa-solid fa-trash"></i>
+             </button>`
+          : '';
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--border);">
+            <div>
+              <span style="font-size:0.875rem;font-weight:600;">${escHtml(loc.name)}</span>
+              <span style="font-size:0.75rem;color:var(--muted);margin-left:0.5rem;">${countStr}</span>
+            </div>
+            ${delBtn}
+          </div>`;
+      }).join('');
+    } catch {
+      list.innerHTML = '<div style="color:#ef9a9a;font-size:0.875rem;padding:0.75rem 0;text-align:center;">Failed to load locations.</div>';
+    }
+  }
+
+  async function addLocation() {
+    const inp = document.getElementById('new-location-input');
+    const name = inp.value.trim();
+    if (!name) return;
+    try {
+      const r = await fetch('/api/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (r.ok) {
+        inp.value = '';
+        showToast(`Location "${name}" added`);
+        await loadLocations();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        showToast(err.error || 'Failed to add location', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  async function confirmDeleteLocation(locId, locName, boxCount, itemCount) {
+    let msg = `Delete location "${locName}"?`;
+    if (boxCount > 0 || itemCount > 0) {
+      const parts = [];
+      if (boxCount > 0)  parts.push(`${boxCount} box${boxCount !== 1 ? 'es' : ''}`);
+      if (itemCount > 0) parts.push(`${itemCount} item${itemCount !== 1 ? 's' : ''}`);
+      msg = `This location has ${parts.join(' and ')}. They will become Unassigned. Continue?`;
+    }
+    if (!confirm(msg)) return;
+    try {
+      const r = await fetch(`/api/locations/${locId}`, { method: 'DELETE' });
+      if (!r.ok && r.status !== 204) {
+        const err = await r.json().catch(() => ({}));
+        showToast(err.error || 'Failed to delete location', 'error');
+        return;
+      }
+      if (boxCount > 0 || itemCount > 0) {
+        await fetch('/api/locations/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: locName })
+        });
+      }
+      showToast(`Location "${locName}" deleted`);
+      needsReload = true;
+      await loadLocations();
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('manageLocationsModal').addEventListener('click', function(e) {
+      if (e.target === this) closeManageLocationsModal();
+    });
+    document.getElementById('settingsModal').addEventListener('click', function(e) {
+      if (e.target === this) closeSettingsModal();
+    });
+  });
+
+  // ── Settings Modal ──
+  async function openSettingsModal() {
+    document.getElementById('settingsModal').classList.add('show');
+    // Pre-fill workspace name
+    const wsName = document.querySelector('.sidebar-link span[style*="font-weight:600"]')?.textContent?.trim()
+      || '{{ active_workspace_name }}';
+    document.getElementById('settings-ws-name').value = wsName;
+    // Pre-fill invite code
+    const invCode = document.getElementById('sidebar-invite-code')?.textContent?.trim() || '{{ active_workspace_invite or "" }}';
+    document.getElementById('settings-invite-code').textContent = invCode;
+    await loadSettingsMembers();
+  }
+  function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('show');
+  }
+
+  async function saveWorkspaceName() {
+    const name = document.getElementById('settings-ws-name').value.trim();
+    if (!name) { showToast('Name is required', 'error'); return; }
+    try {
+      const r = await fetch('/api/workspace-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (r.ok) {
+        showToast('Workspace name saved!');
+        needsReload = true;
+      } else {
+        const err = await r.json().catch(() => ({}));
+        showToast(err.error || 'Failed to save', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  async function regenerateInviteCode() {
+    if (!confirm('Regenerate invite code? The old code will stop working.')) return;
+    try {
+      const r = await fetch('/api/workspace-regenerate-invite', { method: 'POST' });
+      if (r.ok) {
+        const data = await r.json();
+        const newCode = data.invite_code || '';
+        document.getElementById('settings-invite-code').textContent = newCode;
+        const sidebarEl = document.getElementById('sidebar-invite-code');
+        if (sidebarEl) sidebarEl.textContent = newCode;
+        showToast('Invite code regenerated!');
+      } else {
+        showToast('Failed to regenerate', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  async function loadSettingsMembers() {
+    const list = document.getElementById('settings-members-list');
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;padding:0.5rem 0;text-align:center;">Loading…</div>';
+    try {
+      const r = await fetch('/api/workspace-members');
+      const members = r.ok ? await r.json() : [];
+      if (!members.length) {
+        list.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;padding:0.5rem 0;text-align:center;">No members.</div>';
+        return;
+      }
+      list.innerHTML = members.map(m => {
+        const displayName = escHtml(m.display_name || m.email || '');
+        const emailLine   = m.display_name && m.display_name !== m.email
+          ? `<div style="font-size:0.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;">${escHtml(m.email || '')}</div>`
+          : '';
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0;border-bottom:1px solid var(--border);">
+            <div style="min-width:0;flex:1;overflow:hidden;">
+              <div style="font-size:0.875rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;">${displayName}</div>
+              ${emailLine}
+            </div>
+            <select style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:0.3rem 0.55rem;color:var(--text);font-size:0.78rem;outline:none;flex-shrink:0;margin-left:0.5rem;"
+                    onchange="updateMemberRole(${m.user_id}, this.value)">
+              ${ROLES_OPTIONS.map(r => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+            </select>
+          </div>`;
+      }).join('');
+    } catch {
+      list.innerHTML = '<div style="color:#ef9a9a;font-size:0.875rem;padding:0.5rem 0;text-align:center;">Failed to load members.</div>';
+    }
+  }
+
+  async function updateMemberRole(uid, role) {
+    try {
+      const r = await fetch(`/api/workspace-members/${uid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role })
+      });
+      if (r.ok) {
+        showToast('Role updated successfully');
+      } else {
+        showToast('Failed to update role', 'error');
+        await loadSettingsMembers();
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  // ── Pending Requests Modal ──
+  async function openPendingRequestsModal() {
+    document.getElementById('pendingReqModal').classList.add('show');
+    await loadPendingRequests();
+  }
+
+  function closePendingRequestsModal() {
+    document.getElementById('pendingReqModal').classList.remove('show');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('pendingReqModal').addEventListener('click', function(e) {
+      if (e.target === this) closePendingRequestsModal();
+    });
+  }, { once: false, capture: false });
+
+  async function loadPendingRequests() {
+    const list = document.getElementById('pending-req-list');
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;padding:1rem 0;text-align:center;">Loading...</div>';
+    try {
+      const r = await fetch('/api/workspace-requests');
+      if (!r.ok) {
+        list.innerHTML = '<div style="color:#ef9a9a;font-size:0.875rem;padding:1rem 0;text-align:center;">Failed to load requests.</div>';
+        return;
+      }
+      const requests = await r.json();
+      if (!requests.length) {
+        list.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;padding:1rem 0;text-align:center;">No pending requests.</div>';
+        return;
+      }
+      list.innerHTML = requests.map(req => {
+        const displayName = escHtml(req.display_name || req.email || 'Unknown');
+        const emailLine   = req.display_name && req.display_name !== req.email
+          ? `<div style="font-size:0.73rem;color:var(--muted);">${escHtml(req.email || '')}</div>`
+          : '';
+        const dateLine = req.created_at
+          ? `<div style="font-size:0.73rem;color:var(--muted);">Requested ${new Date(req.created_at).toLocaleDateString()}</div>`
+          : '';
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.7rem 0;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="font-size:0.875rem;font-weight:600;">${displayName}</div>
+              ${emailLine}${dateLine}
+            </div>
+            <div style="display:flex;gap:0.4rem;flex-shrink:0;">
+              <button class="btn btn-primary" style="padding:0.35rem 0.8rem;font-size:0.78rem;" onclick="resolveRequest(${req.id}, 'approved')">
+                <i class="fa-solid fa-check"></i> Approve
+              </button>
+              <button class="btn btn-ghost" style="padding:0.35rem 0.8rem;font-size:0.78rem;border-color:rgba(239,83,80,0.4);color:#ef9a9a;" onclick="resolveRequest(${req.id}, 'rejected')">
+                <i class="fa-solid fa-xmark"></i> Reject
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    } catch {
+      list.innerHTML = '<div style="color:#ef9a9a;font-size:0.875rem;padding:1rem 0;text-align:center;">Network error.</div>';
+    }
+  }
+
+  async function resolveRequest(requestId, status) {
+    try {
+      const r = await fetch(`/api/workspace-requests/${requestId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (r.ok) {
+        showToast(status === 'approved' ? 'Request approved!' : 'Request rejected');
+        await loadPendingRequests();
+        if (typeof refreshPendingBadge === 'function') refreshPendingBadge();
+      } else {
+        showToast('Failed to update request', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+  }
+
+  // ── Pending requests badge (admin only) ──
+  {% if active_workspace_role == 'admin' %}
+  async function refreshPendingBadge() {
+    try {
+      const r    = await fetch('/api/workspace-requests');
+      const reqs = r.ok ? await r.json() : [];
+      const cnt  = reqs.length;
+      const badge       = document.getElementById('pending-badge');
+      const sidebarCnt  = document.getElementById('sidebar-pending-count');
+      if (cnt > 0) {
+        badge.textContent      = cnt > 99 ? '99+' : String(cnt);
+        badge.style.display    = '';
+        sidebarCnt.textContent = String(cnt);
+        sidebarCnt.style.display = '';
+      } else {
+        badge.style.display      = 'none';
+        sidebarCnt.style.display = 'none';
+      }
+    } catch {}
+  }
+  refreshPendingBadge();
+  setInterval(refreshPendingBadge, 60000);
+  {% endif %}
+
+  // ── Role change polling (all logged-in users) ──
+  {% if current_user %}
+  const _SESSION_WS_ID   = {{ active_workspace_id | tojson }};
+  let   _lastKnownRole   = ACTIVE_WS_ROLE;
+  let   _roleCheckActive = false;
+
+  async function pollRoleChange() {
+    if (_roleCheckActive) return;
+    _roleCheckActive = true;
+    try {
+      const r = await fetch('/api/auth/me');
+      if (!r.ok) return;
+      const data = await r.json();
+      const ws   = (data.workspaces || []).find(w => w.workspace_id === _SESSION_WS_ID);
+      if (!ws) return;
+      if (_lastKnownRole && ws.role !== _lastKnownRole) {
+        document.getElementById('role-change-banner').style.display = '';
+        setTimeout(async () => {
+          await fetch('/api/refresh-session', { method: 'POST' });
+          window.location.reload();
+        }, 2000);
+      }
+    } catch {} finally {
+      _roleCheckActive = false;
+    }
+  }
+  setInterval(pollRoleChange, 30000);
+
+  // ── Background data refresh ──
+  let _bgRefreshActive = false;
+
+  function updateStatCards() {
+    const bg  = document.getElementById('boxes-grid');
+    const ig  = document.getElementById('items-grid');
+    const elB = document.getElementById('stat-boxes');
+    const elI = document.getElementById('stat-items');
+    const elL = document.getElementById('stat-locations');
+    if (elB && bg) elB.textContent = bg.querySelectorAll('.card-wrap[data-type="box"]').length;
+    if (elI && ig) elI.textContent = ig.querySelectorAll('.card-wrap[data-type="item"]').length;
+    if (elL) {
+      const locs = new Set();
+      document.querySelectorAll('.card-wrap[data-location]').forEach(el => {
+        const v = (el.dataset.location || '').trim();
+        if (v) locs.add(v);
+      });
+      elL.textContent = locs.size;
+    }
+  }
+
+  async function bgRefresh() {
+    if (!_SESSION_WS_ID || _bgRefreshActive) return;
+    _bgRefreshActive = true;
+    try {
+      const headers = { 'X-Workspace-ID': String(_SESSION_WS_ID) };
+      const [boxResp, itemResp] = await Promise.all([
+        fetch('/api/boxes',  { headers }),
+        fetch('/api/items',  { headers }),
+      ]);
+      if (!boxResp.ok || !itemResp.ok) return;
+
+      const boxes = await boxResp.json();
+      const items = await itemResp.json();
+      if (!Array.isArray(boxes) || !Array.isArray(items)) return;
+
+      const modalOpen     = !!document.querySelector('.modal-backdrop.show');
+      const activeEl      = document.activeElement;
+      const isTypingInModal = activeEl &&
+        (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable) &&
+        !!activeEl.closest('.modal-backdrop');
+      if (modalOpen || isTypingInModal) return;
+
+      const bg = document.getElementById('boxes-grid');
+      const ig = document.getElementById('items-grid');
+
+      const domBoxIds  = new Set([...(bg ? bg.querySelectorAll('.card-wrap[data-id]') : [])].map(el => el.dataset.id));
+      const domItemIds = new Set([...(ig ? ig.querySelectorAll('.card-wrap[data-id]') : [])].map(el => el.dataset.id));
+      const srvBoxIds  = new Set(boxes.map(b => String(b.id)));
+      const srvItemIds = new Set(items.map(i => String(i.id)));
+
+      const boxChanged  = boxes.length !== domBoxIds.size  || boxes.some(b => !domBoxIds.has(String(b.id)));
+      const itemChanged = items.length !== domItemIds.size || items.some(i => !domItemIds.has(String(i.id)));
+
+      if (boxChanged || itemChanged) {
+        const resp = await fetch('/');
+        if (resp.ok) {
+          const html = await resp.text();
+          if (html.includes('<html')) {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newBg = doc.getElementById('boxes-grid');
+            const newIg = doc.getElementById('items-grid');
+            if (bg && newBg) {
+              bg.innerHTML = newBg.innerHTML;
+              try { setView(localStorage.getItem('wms_view_viewContainer') || 'grid', 'viewContainer'); } catch {}
+            }
+            if (ig && newIg) {
+              ig.innerHTML = newIg.innerHTML;
+              try { setView(localStorage.getItem('wms_view_itemsContainer') || 'grid', 'itemsContainer'); } catch {}
+            }
+            console.log(`Poll: boxes ${domBoxIds.size}→${srvBoxIds.size}, items ${domItemIds.size}→${srvItemIds.size}`);
+          }
+        }
+      }
+
+      updateStatCards();
+    } catch (err) {
+      console.warn('[bgRefresh]', err);
+    } finally {
+      _bgRefreshActive = false;
+    }
+  }
+
+  setInterval(bgRefresh, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) bgRefresh();
+  });
+  setTimeout(bgRefresh, 5000);
+  {% endif %}
+
   // ── Delete ──
   async function confirmDelete() {
     document.getElementById('cardDropdown').classList.remove('open');
@@ -1986,7 +2784,8 @@
         showToast(`${isBox ? 'Box' : 'Item'} deleted`);
         setTimeout(() => window.location.reload(), 900);
       } else {
-        showToast('Delete failed', 'error');
+        const err = await r.json().catch(() => ({}));
+        showToast(err.error || 'Delete failed', 'error');
       }
     } catch { showToast('Network error', 'error'); }
   }

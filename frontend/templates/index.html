@@ -4,6 +4,12 @@
 {% block content %}
 <div class="search-hero">
   <h1><i class="fa-solid fa-warehouse"></i> Warehouse Manager</h1>
+  {% if active_workspace_name and active_workspace_name != 'No workspace' %}
+  <div style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem;background:rgba(124,106,247,0.08);border:1px solid var(--border);border-radius:999px;padding:0.2rem 0.75rem;">
+    <i class="fa-solid fa-building" style="color:var(--accent);font-size:0.7rem;"></i>
+    {{ active_workspace_name }}
+  </div>
+  {% endif %}
   <p>Find and manage all your storage boxes and items in one place</p>
   <form class="search-bar" action="/search" method="get" role="search">
     <i class="fa-solid fa-magnifying-glass"></i>
@@ -14,15 +20,15 @@
 
 <div class="stats-row">
   <div class="stat-card">
-    <div class="stat-value">{{ boxes | length }}</div>
+    <div class="stat-value" id="stat-boxes">{{ boxes | length }}</div>
     <div class="stat-label"><i class="fa-solid fa-box"></i> Total Boxes</div>
   </div>
   <div class="stat-card">
-    <div class="stat-value">{{ items | length }}</div>
+    <div class="stat-value" id="stat-items">{{ items | length }}</div>
     <div class="stat-label"><i class="fa-solid fa-cube"></i> All Items</div>
   </div>
   <div class="stat-card">
-    <div class="stat-value">{{ locations | length }}</div>
+    <div class="stat-value" id="stat-locations">{{ locations | length }}</div>
     <div class="stat-label"><i class="fa-solid fa-location-dot"></i> Locations</div>
   </div>
 </div>
@@ -96,10 +102,12 @@
   </div>
 </div>
 
+<div id="boxes-grid">
 {% if boxes %}
 <div class="grid grid-3" id="viewContainer">
   {% for box in boxes %}
   <div class="card-wrap"
+       data-id="{{ box.id }}"
        data-type="box"
        data-location="{{ (box.location or '') | lower }}"
        data-category=""
@@ -123,6 +131,11 @@
               <i class="fa-solid fa-location-dot" style="font-size:0.72rem;"></i> {{ box.location }}
             </div>
             {% endif %}
+            {% if box.last_modified_by %}
+            <div style="margin-top:0.2rem;">
+              <span style="color:var(--muted);font-size:0.75rem;"><i class="fa-solid fa-pen" style="font-size:0.7rem;"></i> {{ box.last_modified_by }}</span>
+            </div>
+            {% endif %}
           </div>
         </div>
         <div class="card-right">
@@ -136,6 +149,7 @@
         </div>
       </div>
     </a>
+    {% if active_workspace_role and active_workspace_role != 'viewer' %}
     <button class="card-menu-btn"
             data-type="box"
             data-id="{{ box.id }}"
@@ -146,6 +160,7 @@
             title="Options">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
@@ -155,6 +170,7 @@
   <p>No boxes yet — click the <strong style="color:var(--accent);">+</strong> button to create one!</p>
 </div>
 {% endif %}
+</div>
 
 <!-- ── Items section ── -->
 <div class="page-header" style="margin-top:2.5rem;">
@@ -174,10 +190,12 @@
   </div>
 </div>
 
+<div id="items-grid">
 {% if items %}
 <div class="grid grid-3" id="itemsContainer">
   {% for item in items %}
   <div class="card-wrap"
+       data-id="{{ item.id }}"
        data-type="item"
        data-location="{{ (item.location or '') | lower }}"
        data-category="{{ (item.category or '') | lower }}"
@@ -201,9 +219,17 @@
               <span class="badge badge-accent"><i class="fa-solid fa-tag"></i> {{ item.category }}</span>
             </div>
             {% endif %}
+            {% if item.last_modified_by %}
+            <div style="margin-top:0.2rem;">
+              <span style="color:var(--muted);font-size:0.75rem;"><i class="fa-solid fa-pen" style="font-size:0.7rem;"></i> {{ item.last_modified_by }}</span>
+            </div>
+            {% endif %}
           </div>
         </div>
         <div class="card-right">
+          {% if (item.quantity or 1) > 1 %}
+          <span class="badge badge-green"><i class="fa-solid fa-layer-group"></i> ×{{ item.quantity }}</span>
+          {% endif %}
           {% set b = boxes_map.get(item.box_id) if item.box_id else none %}
           {% if b %}
           <span class="badge badge-gray"><i class="fa-solid fa-box"></i> {{ b.name }}</span>
@@ -214,6 +240,7 @@
         </div>
       </div>
     </a>
+    {% if active_workspace_role and active_workspace_role != 'viewer' %}
     <button class="card-menu-btn"
             data-type="item"
             data-id="{{ item.id }}"
@@ -222,11 +249,13 @@
             data-location="{{ (item.location or '') | e }}"
             data-box-id="{{ item.box_id or '' }}"
             data-tags='{{ item.tags | tojson }}'
+            data-quantity="{{ item.quantity or 1 }}"
             data-image="{{ item.image or '' }}"
             onclick="openCardMenu(event, this)"
             title="Options">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
@@ -236,4 +265,5 @@
   <p>No items yet — click the <strong style="color:var(--accent);">+</strong> button to add one!</p>
 </div>
 {% endif %}
+</div>
 {% endblock %}

@@ -1,25 +1,29 @@
 import io
+import json
 import os
 import time
 import uuid
+import urllib.request as _urllib_request
 from datetime import datetime
 
 import qrcode
-from flask import Flask, jsonify, request, send_file, send_from_directory, abort
+from flask import Flask, jsonify, request, send_file, send_from_directory, abort, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event, text
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "mysql+pymysql://root:root@localhost/warehouse")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL", "mysql+pymysql://root:root@localhost/warehouse"
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/app/uploads")
+AUTH_SERVICE_URL   = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:8080")
+UPLOAD_FOLDER      = os.environ.get("UPLOAD_FOLDER", "/app/uploads")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
-# Ensure the uploads directory exists at startup (before any request comes in)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
@@ -30,11 +34,10 @@ def allowed_file(filename):
 def save_upload(file, prefix):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     safe_name = secure_filename(file.filename or "upload")
-    # Fallback extension if secure_filename strips everything
-    parts = safe_name.rsplit(".", 1)
-    ext   = parts[1].lower() if len(parts) == 2 else "jpg"
-    filename = f"{prefix}_{uuid.uuid4().hex[:10]}.{ext}"
-    dest = os.path.join(UPLOAD_FOLDER, filename)
+    parts     = safe_name.rsplit(".", 1)
+    ext       = parts[1].lower() if len(parts) == 2 else "jpg"
+    filename  = f"{prefix}_{uuid.uuid4().hex[:10]}.{ext}"
+    dest      = os.path.join(UPLOAD_FOLDER, filename)
     file.save(dest)
     print(f"[upload] saved → {dest}  (size={os.path.getsize(dest)}B)", flush=True)
     return filename
@@ -48,29 +51,121 @@ def remove_file(filename):
 
 
 # ---------------------------------------------------------------------------
+# Workspace + role helpers
+# ---------------------------------------------------------------------------
+
+def _get_workspace_id():
+    """Return workspace_id from X-Workspace-ID header, or None."""
+    ws_id = request.headers.get("X-Workspace-ID")
+    if ws_id:
+        try:
+            return int(ws_id)
+        except (ValueError, TypeError):
+            pass
+    return None
+
+
+def _get_user_role_in_workspace():
+    """Call auth-service /auth/me to get the caller's role in the active workspace."""
+    auth_header = request.headers.get("Authorization")
+    ws_id = _get_workspace_id()
+    if not auth_header or not ws_id:
+        return None
+    try:
+        req = _urllib_request.Request(
+            f"{AUTH_SERVICE_URL}/auth/me",
+            headers={"Authorization": auth_header},
+            method="GET",
+        )
+        with _urllib_request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+        for w in (data.get("workspaces") or []):
+            if w.get("workspace_id") == ws_id:
+                return w.get("role")
+    except Exception:
+        pass
+    return None
+
+
+def _check_role(*allowed_roles):
+    """Return error response tuple if caller's role is not in allowed_roles, else None."""
+    role = _get_user_role_in_workspace()
+    if not role or role not in allowed_roles:
+        return jsonify({"error": "You don't have permission to perform this action"}), 403
+    return None
+
+
+def get_current_user_display_name():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        return "Unknown"
+    try:
+        req = _urllib_request.Request(
+            f"{AUTH_SERVICE_URL}/auth/me",
+            headers={"Authorization": auth_header},
+            method="GET",
+        )
+        with _urllib_request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+        first   = (data.get("first_name") or "").strip()
+        last    = (data.get("last_name")  or "").strip()
+        display = " ".join(filter(None, [first, last]))
+        return display or data.get("email") or "Unknown"
+    except Exception:
+        return "Unknown"
+
+
+def log_change(entity_type, entity_id, action, changed_by, workspace_id, changes=None):
+    if changes:
+        for field, (old_val, new_val) in changes.items():
+            db.session.add(ChangeLog(
+                entity_type   = entity_type,
+                entity_id     = entity_id,
+                action        = action,
+                field_changed = field,
+                old_value     = str(old_val) if old_val is not None else None,
+                new_value     = str(new_val) if new_val is not None else None,
+                changed_by    = changed_by,
+                workspace_id  = workspace_id,
+            ))
+    else:
+        db.session.add(ChangeLog(
+            entity_type  = entity_type,
+            entity_id    = entity_id,
+            action       = action,
+            changed_by   = changed_by,
+            workspace_id = workspace_id,
+        ))
+
+
+# ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
 
 class Box(db.Model):
     __tablename__ = "boxes"
 
-    id         = db.Column(db.Integer, primary_key=True)
-    name       = db.Column(db.String(255), nullable=False)
-    location   = db.Column(db.String(255))
-    code       = db.Column(db.String(10), unique=True, nullable=False, default="")
-    image      = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    id               = db.Column(db.Integer, primary_key=True)
+    name             = db.Column(db.String(255), nullable=False)
+    location         = db.Column(db.String(255))
+    code             = db.Column(db.String(10), unique=True, nullable=False, default="")
+    image            = db.Column(db.String(255), nullable=True)
+    workspace_id     = db.Column(db.Integer, nullable=True)
+    last_modified_by = db.Column(db.String(255), nullable=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
 
     items = db.relationship("Item", backref="box", lazy=True)
 
     def to_dict(self):
         return {
-            "id":         self.id,
-            "code":       self.code,
-            "name":       self.name,
-            "location":   self.location,
-            "image":      self.image,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "id":               self.id,
+            "code":             self.code,
+            "name":             self.name,
+            "location":         self.location,
+            "image":            self.image,
+            "workspace_id":     self.workspace_id,
+            "last_modified_by": self.last_modified_by,
+            "created_at":       self.created_at.isoformat() if self.created_at else None,
         }
 
     @staticmethod
@@ -86,28 +181,34 @@ class Box(db.Model):
 class Item(db.Model):
     __tablename__ = "items"
 
-    id         = db.Column(db.Integer, primary_key=True)
-    name       = db.Column(db.String(255), nullable=False)
-    category   = db.Column(db.String(255))
-    location   = db.Column(db.String(255), nullable=True)
-    code       = db.Column(db.String(10), unique=True, nullable=False, default="")
-    box_id     = db.Column(db.Integer, db.ForeignKey("boxes.id"), nullable=True)
-    image      = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    id               = db.Column(db.Integer, primary_key=True)
+    name             = db.Column(db.String(255), nullable=False)
+    category         = db.Column(db.String(255))
+    location         = db.Column(db.String(255), nullable=True)
+    code             = db.Column(db.String(10), unique=True, nullable=False, default="")
+    box_id           = db.Column(db.Integer, db.ForeignKey("boxes.id"), nullable=True)
+    image            = db.Column(db.String(255), nullable=True)
+    quantity         = db.Column(db.Integer, nullable=False, default=1)
+    workspace_id     = db.Column(db.Integer, nullable=True)
+    last_modified_by = db.Column(db.String(255), nullable=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
 
     tags = db.relationship("Tag", backref="item", lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
-            "id":         self.id,
-            "code":       self.code,
-            "name":       self.name,
-            "category":   self.category,
-            "location":   self.location,
-            "box_id":     self.box_id,
-            "image":      self.image,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "tags":       [t.name for t in self.tags],
+            "id":               self.id,
+            "code":             self.code,
+            "name":             self.name,
+            "category":         self.category,
+            "location":         self.location,
+            "box_id":           self.box_id,
+            "image":            self.image,
+            "quantity":         self.quantity if self.quantity is not None else 1,
+            "workspace_id":     self.workspace_id,
+            "last_modified_by": self.last_modified_by,
+            "created_at":       self.created_at.isoformat() if self.created_at else None,
+            "tags":             [t.name for t in self.tags],
         }
 
     @staticmethod
@@ -135,29 +236,60 @@ class Tag(db.Model):
         return {"id": self.id, "name": self.name, "item_id": self.item_id}
 
 
+class ChangeLog(db.Model):
+    __tablename__ = "change_logs"
+
+    id            = db.Column(db.Integer, primary_key=True)
+    entity_type   = db.Column(db.String(10),  nullable=False)
+    entity_id     = db.Column(db.Integer,     nullable=False)
+    action        = db.Column(db.String(10),  nullable=False)
+    field_changed = db.Column(db.String(255), nullable=True)
+    old_value     = db.Column(db.Text,        nullable=True)
+    new_value     = db.Column(db.Text,        nullable=True)
+    changed_by    = db.Column(db.String(255), nullable=False)
+    workspace_id  = db.Column(db.Integer,     nullable=False)
+    created_at    = db.Column(db.DateTime,    default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id":            self.id,
+            "entity_type":   self.entity_type,
+            "entity_id":     self.entity_id,
+            "action":        self.action,
+            "field_changed": self.field_changed,
+            "old_value":     self.old_value,
+            "new_value":     self.new_value,
+            "changed_by":    self.changed_by,
+            "workspace_id":  self.workspace_id,
+            "created_at":    self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 # ---------------------------------------------------------------------------
-# DB init — runs at import time so gunicorn workers also apply migrations
+# DB init
 # ---------------------------------------------------------------------------
 
 def _run_migrations(conn):
-    """ADD COLUMN statements that are safe to repeat (ignored if column exists)."""
     migrations = [
-        ("boxes", "image",    "VARCHAR(255)"),
-        ("items", "image",    "VARCHAR(255)"),
-        ("items", "location", "VARCHAR(255)"),
+        ("boxes", "image",            "VARCHAR(255)"),
+        ("items", "image",            "VARCHAR(255)"),
+        ("items", "location",         "VARCHAR(255)"),
+        ("boxes", "workspace_id",     "INT"),
+        ("items", "workspace_id",     "INT"),
+        ("items", "quantity",         "INT NOT NULL DEFAULT 1"),
+        ("boxes", "last_modified_by", "VARCHAR(255)"),
+        ("items", "last_modified_by", "VARCHAR(255)"),
     ]
     for table, col, col_type in migrations:
         try:
             conn.execute(text(f"ALTER TABLE `{table}` ADD COLUMN `{col}` {col_type}"))
             conn.commit()
             print(f"[db] ALTER TABLE {table}: added column {col}", flush=True)
-        except Exception as e:
-            # Column already exists or other benign error — skip
+        except Exception:
             conn.rollback()
 
 
 def _init_db():
-    """Create tables and apply migrations. Retries up to 60 s for MySQL readiness."""
     for attempt in range(12):
         try:
             with app.app_context():
@@ -192,7 +324,6 @@ def health():
 def serve_upload(filename):
     path = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(path):
-        print(f"[serve] 404 – file not found: {path}", flush=True)
         abort(404)
     return send_from_directory(UPLOAD_FOLDER, filename)
 
@@ -203,41 +334,75 @@ def serve_upload(filename):
 
 @app.route("/api/boxes", methods=["GET"])
 def get_boxes():
-    return jsonify([b.to_dict() for b in Box.query.all()])
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        return jsonify([])
+    return jsonify([b.to_dict() for b in Box.query.filter_by(workspace_id=ws_id).all()])
 
 
 @app.route("/api/boxes", methods=["POST"])
 def create_box():
+    err = _check_role("contributor", "manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        abort(401, description="X-Workspace-ID header required")
     data = request.get_json(silent=True) or {}
     name = data.get("name")
     if not name:
         abort(400, description="'name' is required")
-    box = Box(name=name, location=data.get("location"))
+    user_display = get_current_user_display_name()
+    box = Box(name=name, location=data.get("location"), workspace_id=ws_id,
+              last_modified_by=user_display)
     db.session.add(box)
+    db.session.flush()
+    log_change("box", box.id, "created", user_display, ws_id)
     db.session.commit()
     return jsonify(box.to_dict()), 201
 
 
 @app.route("/api/boxes/<int:box_id>", methods=["GET"])
 def get_box(box_id):
-    return jsonify(db.get_or_404(Box, box_id).to_dict())
+    ws_id = _get_workspace_id()
+    box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
+    return jsonify(box.to_dict())
 
 
 @app.route("/api/boxes/<int:box_id>", methods=["PUT"])
 def update_box(box_id):
-    box  = db.get_or_404(Box, box_id)
-    data = request.get_json(silent=True) or {}
-    if data.get("name"):
+    err = _check_role("manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
+    data  = request.get_json(silent=True) or {}
+    changes = {}
+    if data.get("name") and data["name"] != box.name:
+        changes["name"] = (box.name, data["name"])
         box.name = data["name"]
     if "location" in data:
-        box.location = data["location"] or None
+        new_loc = data["location"] or None
+        if new_loc != box.location:
+            changes["location"] = (box.location, new_loc)
+        box.location = new_loc
+    user_display = get_current_user_display_name()
+    box.last_modified_by = user_display
+    if changes:
+        log_change("box", box.id, "updated", user_display, ws_id, changes)
     db.session.commit()
     return jsonify(box.to_dict())
 
 
 @app.route("/api/boxes/<int:box_id>", methods=["DELETE"])
 def delete_box(box_id):
-    box = db.get_or_404(Box, box_id)
+    err = _check_role("manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
+    user_display = get_current_user_display_name()
+    log_change("box", box.id, "deleted", user_display, ws_id)
     remove_file(box.image)
     for item in box.items:
         item.box_id = None
@@ -252,20 +417,22 @@ def delete_box(box_id):
 
 @app.route("/api/boxes/<int:box_id>/image", methods=["POST"])
 def upload_box_image(box_id):
-    print(f"[upload] POST /api/boxes/{box_id}/image — files={list(request.files.keys())}", flush=True)
-    box = db.get_or_404(Box, box_id)
+    err = _check_role("manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
     if "file" not in request.files:
-        print(f"[upload] box {box_id}: no 'file' key in request.files", flush=True)
         abort(400, description="No file provided")
     file = request.files["file"]
-    print(f"[upload] box {box_id}: filename={file.filename!r}  content_type={file.content_type!r}", flush=True)
     if not file.filename or not allowed_file(file.filename):
-        print(f"[upload] box {box_id}: rejected — allowed_file={allowed_file(file.filename or '')}", flush=True)
         abort(400, description="Invalid file type — use jpg, png, gif, or webp")
     remove_file(box.image)
     box.image = save_upload(file, f"box_{box_id}")
+    user_display = get_current_user_display_name()
+    box.last_modified_by = user_display
+    log_change("box", box.id, "updated", user_display, ws_id, {"image": (None, box.image)})
     db.session.commit()
-    print(f"[upload] box {box_id}: DB updated, image={box.image}", flush=True)
     return jsonify(box.to_dict())
 
 
@@ -273,7 +440,9 @@ def upload_box_image(box_id):
 def get_box_qr(box_id):
     from PIL import Image, ImageDraw, ImageFont
 
-    box = db.get_or_404(Box, box_id)
+    ws_id = _get_workspace_id()
+    box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
+
     qr_data = f"box:{box.code}:{box.name}"
     qr_img  = qrcode.make(qr_data).convert("RGB")
 
@@ -303,11 +472,20 @@ def get_box_qr(box_id):
 
 @app.route("/api/items", methods=["GET"])
 def get_items():
-    return jsonify([i.to_dict() for i in Item.query.all()])
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        return jsonify([])
+    return jsonify([i.to_dict() for i in Item.query.filter_by(workspace_id=ws_id).all()])
 
 
 @app.route("/api/items", methods=["POST"])
 def create_item():
+    err = _check_role("contributor", "manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        abort(401, description="X-Workspace-ID header required")
     data = request.get_json(silent=True) or {}
     name = data.get("name")
     if not name:
@@ -315,13 +493,22 @@ def create_item():
 
     box_id = data.get("box_id")
     if box_id is not None:
-        db.get_or_404(Box, box_id)
+        Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
 
+    try:
+        quantity = max(1, int(data.get("quantity") or 1))
+    except (ValueError, TypeError):
+        quantity = 1
+
+    user_display = get_current_user_display_name()
     item = Item(
-        name     = name,
-        category = data.get("category"),
-        location = data.get("location"),
-        box_id   = box_id,
+        name             = name,
+        category         = data.get("category"),
+        location         = data.get("location"),
+        box_id           = box_id,
+        quantity         = quantity,
+        workspace_id     = ws_id,
+        last_modified_by = user_display,
     )
     db.session.add(item)
     db.session.flush()
@@ -329,18 +516,20 @@ def create_item():
     for tag_name in data.get("tags", []):
         db.session.add(Tag(name=tag_name, item_id=item.id))
 
+    log_change("item", item.id, "created", user_display, ws_id)
     db.session.commit()
     return jsonify(item.to_dict()), 201
 
 
 @app.route("/api/items/search", methods=["GET"])
 def search_items():
-    q = request.args.get("q", "").strip()
+    ws_id = _get_workspace_id()
+    q     = request.args.get("q", "").strip()
     if not q:
         abort(400, description="Query parameter 'q' is required")
 
     pattern = f"%{q}%"
-    items = (
+    query   = (
         Item.query
         .outerjoin(Tag)
         .filter(db.or_(
@@ -349,48 +538,85 @@ def search_items():
             Item.location.ilike(pattern),
             Tag.name.ilike(pattern),
         ))
-        .distinct()
-        .all()
     )
-    return jsonify([i.to_dict() for i in items])
+    if ws_id:
+        query = query.filter(Item.workspace_id == ws_id)
+    return jsonify([i.to_dict() for i in query.distinct().all()])
 
 
 @app.route("/api/items/<int:item_id>", methods=["GET"])
 def get_item(item_id):
-    return jsonify(db.get_or_404(Item, item_id).to_dict())
+    ws_id = _get_workspace_id()
+    item  = Item.query.filter_by(id=item_id, workspace_id=ws_id).first_or_404()
+    return jsonify(item.to_dict())
 
 
 @app.route("/api/items/<int:item_id>", methods=["PUT"])
 def update_item(item_id):
-    item = db.get_or_404(Item, item_id)
-    data = request.get_json(silent=True) or {}
+    err = _check_role("manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    item  = Item.query.filter_by(id=item_id, workspace_id=ws_id).first_or_404()
+    data  = request.get_json(silent=True) or {}
 
-    if data.get("name"):
+    changes = {}
+    if data.get("name") and data["name"] != item.name:
+        changes["name"] = (item.name, data["name"])
         item.name = data["name"]
     if "category" in data:
-        item.category = data["category"] or None
+        new_cat = data["category"] or None
+        if new_cat != item.category:
+            changes["category"] = (item.category, new_cat)
+        item.category = new_cat
     if "location" in data:
-        item.location = data["location"] or None
+        new_loc = data["location"] or None
+        if new_loc != item.location:
+            changes["location"] = (item.location, new_loc)
+        item.location = new_loc
     if "box_id" in data:
         box_id = data["box_id"]
         if box_id is not None:
-            db.get_or_404(Box, box_id)
+            Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
+        if box_id != item.box_id:
+            changes["box_id"] = (item.box_id, box_id)
         item.box_id = box_id
-
+    if "quantity" in data:
+        try:
+            new_qty = max(1, int(data["quantity"]))
+            if new_qty != item.quantity:
+                changes["quantity"] = (item.quantity, new_qty)
+            item.quantity = new_qty
+        except (ValueError, TypeError):
+            pass
     if "tags" in data:
+        old_tags = sorted([t.name for t in item.tags])
+        new_tags = data["tags"]
         for tag in list(item.tags):
             db.session.delete(tag)
         db.session.flush()
-        for tag_name in data["tags"]:
+        for tag_name in new_tags:
             db.session.add(Tag(name=tag_name, item_id=item.id))
+        if old_tags != sorted(new_tags):
+            changes["tags"] = (", ".join(old_tags), ", ".join(sorted(new_tags)))
 
+    user_display = get_current_user_display_name()
+    item.last_modified_by = user_display
+    if changes:
+        log_change("item", item.id, "updated", user_display, ws_id, changes)
     db.session.commit()
     return jsonify(item.to_dict())
 
 
 @app.route("/api/items/<int:item_id>", methods=["DELETE"])
 def delete_item(item_id):
-    item = db.get_or_404(Item, item_id)
+    err = _check_role("manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    item  = Item.query.filter_by(id=item_id, workspace_id=ws_id).first_or_404()
+    user_display = get_current_user_display_name()
+    log_change("item", item.id, "deleted", user_display, ws_id)
     remove_file(item.image)
     db.session.delete(item)
     db.session.commit()
@@ -403,21 +629,189 @@ def delete_item(item_id):
 
 @app.route("/api/items/<int:item_id>/image", methods=["POST"])
 def upload_item_image(item_id):
-    print(f"[upload] POST /api/items/{item_id}/image — files={list(request.files.keys())}", flush=True)
-    item = db.get_or_404(Item, item_id)
+    err = _check_role("manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    item  = Item.query.filter_by(id=item_id, workspace_id=ws_id).first_or_404()
     if "file" not in request.files:
-        print(f"[upload] item {item_id}: no 'file' key in request.files", flush=True)
         abort(400, description="No file provided")
     file = request.files["file"]
-    print(f"[upload] item {item_id}: filename={file.filename!r}  content_type={file.content_type!r}", flush=True)
     if not file.filename or not allowed_file(file.filename):
-        print(f"[upload] item {item_id}: rejected — allowed_file={allowed_file(file.filename or '')}", flush=True)
         abort(400, description="Invalid file type — use jpg, png, gif, or webp")
     remove_file(item.image)
     item.image = save_upload(file, f"item_{item_id}")
+    user_display = get_current_user_display_name()
+    item.last_modified_by = user_display
+    log_change("item", item.id, "updated", user_display, ws_id, {"image": (None, item.image)})
     db.session.commit()
-    print(f"[upload] item {item_id}: DB updated, image={item.image}", flush=True)
     return jsonify(item.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# Locations — stats (box/item counts per location name)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/locations/stats", methods=["GET"])
+def get_location_stats():
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        return jsonify([])
+    box_rows  = db.session.query(Box.location,  db.func.count(Box.id)).filter(
+        Box.workspace_id  == ws_id, Box.location  != None).group_by(Box.location).all()
+    item_rows = db.session.query(Item.location, db.func.count(Item.id)).filter(
+        Item.workspace_id == ws_id, Item.location != None).group_by(Item.location).all()
+    box_counts  = {loc: cnt for loc, cnt in box_rows}
+    item_counts = {loc: cnt for loc, cnt in item_rows}
+    all_names   = set(box_counts) | set(item_counts)
+    return jsonify([
+        {"name": name, "box_count": box_counts.get(name, 0), "item_count": item_counts.get(name, 0)}
+        for name in sorted(all_names)
+    ])
+
+
+# ---------------------------------------------------------------------------
+# Locations — clear by name (called when a location is deleted)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/locations/clear", methods=["POST"])
+def clear_location():
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        abort(401, description="X-Workspace-ID header required")
+    data = request.get_json(silent=True) or {}
+    name = data.get("name")
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+    Box.query.filter_by(workspace_id=ws_id, location=name).update({"location": None})
+    Item.query.filter_by(workspace_id=ws_id, location=name).update({"location": None})
+    db.session.commit()
+    return jsonify({"cleared": True})
+
+
+# ---------------------------------------------------------------------------
+# History
+# ---------------------------------------------------------------------------
+
+@app.route("/api/boxes/<int:box_id>/history", methods=["GET"])
+def get_box_history(box_id):
+    ws_id = _get_workspace_id()
+    logs  = ChangeLog.query.filter_by(entity_type="box", entity_id=box_id, workspace_id=ws_id)\
+        .order_by(ChangeLog.created_at.desc()).all()
+    return jsonify([l.to_dict() for l in logs])
+
+
+@app.route("/api/items/<int:item_id>/history", methods=["GET"])
+def get_item_history(item_id):
+    ws_id = _get_workspace_id()
+    logs  = ChangeLog.query.filter_by(entity_type="item", entity_id=item_id, workspace_id=ws_id)\
+        .order_by(ChangeLog.created_at.desc()).all()
+    return jsonify([l.to_dict() for l in logs])
+
+
+# ---------------------------------------------------------------------------
+# Export
+# ---------------------------------------------------------------------------
+
+@app.route("/api/export/csv", methods=["GET"])
+def export_csv():
+    import csv
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        abort(401, description="X-Workspace-ID header required")
+    boxes = Box.query.filter_by(workspace_id=ws_id).order_by(Box.id).all()
+    items = Item.query.filter_by(workspace_id=ws_id).order_by(Item.id).all()
+    box_code_map = {b.id: b.code for b in boxes}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow(["BOXES"])
+    writer.writerow(["code", "name", "location", "created_at"])
+    for b in boxes:
+        writer.writerow([
+            b.code or "",
+            b.name or "",
+            b.location or "",
+            b.created_at.isoformat() if b.created_at else "",
+        ])
+
+    writer.writerow([])
+
+    writer.writerow(["ITEMS"])
+    writer.writerow(["code", "name", "category", "location", "quantity", "tags", "box_code", "created_at"])
+    for item in items:
+        writer.writerow([
+            item.code or "",
+            item.name or "",
+            item.category or "",
+            item.location or "",
+            item.quantity if item.quantity is not None else 1,
+            "|".join(t.name for t in item.tags),
+            box_code_map.get(item.box_id, "") if item.box_id else "",
+            item.created_at.isoformat() if item.created_at else "",
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=warehouse_export.csv"},
+    )
+
+
+@app.route("/api/export/excel", methods=["GET"])
+def export_excel():
+    import openpyxl
+    from openpyxl.styles import Font
+    ws_id = _get_workspace_id()
+    if not ws_id:
+        abort(401, description="X-Workspace-ID header required")
+    boxes = Box.query.filter_by(workspace_id=ws_id).order_by(Box.id).all()
+    items = Item.query.filter_by(workspace_id=ws_id).order_by(Item.id).all()
+    box_code_map = {b.id: b.code for b in boxes}
+
+    wb = openpyxl.Workbook()
+
+    ws_boxes = wb.active
+    ws_boxes.title = "Boxes"
+    box_headers = ["code", "name", "location", "created_at"]
+    ws_boxes.append(box_headers)
+    for cell in ws_boxes[1]:
+        cell.font = Font(bold=True)
+    for b in boxes:
+        ws_boxes.append([
+            b.code or "",
+            b.name or "",
+            b.location or "",
+            b.created_at.isoformat() if b.created_at else "",
+        ])
+
+    ws_items = wb.create_sheet("Items")
+    item_headers = ["code", "name", "category", "location", "quantity", "tags", "box_code", "created_at"]
+    ws_items.append(item_headers)
+    for cell in ws_items[1]:
+        cell.font = Font(bold=True)
+    for item in items:
+        ws_items.append([
+            item.code or "",
+            item.name or "",
+            item.category or "",
+            item.location or "",
+            item.quantity if item.quantity is not None else 1,
+            "|".join(t.name for t in item.tags),
+            box_code_map.get(item.box_id, "") if item.box_id else "",
+            item.created_at.isoformat() if item.created_at else "",
+        ])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name="warehouse_export.xlsx",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -429,13 +823,18 @@ def bad_request(e):
     return jsonify({"error": str(e.description)}), 400
 
 
+@app.errorhandler(401)
+def unauthorized(e):
+    return jsonify({"error": str(e.description)}), 401
+
+
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "not found"}), 404
 
 
 # ---------------------------------------------------------------------------
-# Entry point (python app.py)
+# Entry point
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":

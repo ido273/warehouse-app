@@ -8,6 +8,27 @@ services:
     environment:
       FLASK_ENV: development
       FLASK_DEBUG: "1"
+      SECRET_KEY: REDACTED
+      AUTH_SERVICE_URL: http://auth-service:8080
+    depends_on:
+      auth-service:
+        condition: service_healthy
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "5003:8080"
+    environment:
+      DATABASE_URL: mysql+pymysql://warehouse_user:REDACTED@mysql/warehouse_db
+      JWT_SECRET_KEY: REDACTED
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
   backend:
     build: ./backend
@@ -15,6 +36,7 @@ services:
       - "5001:8080"
     environment:
       DATABASE_URL: mysql+pymysql://warehouse_user:REDACTED@mysql/warehouse_db
+      AUTH_SERVICE_URL: http://auth-service:8080
     volumes:
       - backend_uploads:/app/uploads
     depends_on:
@@ -22,6 +44,8 @@ services:
         condition: service_healthy
       ai-tagging:
         condition: service_started
+      auth-service:
+        condition: service_healthy
 
   ai-tagging:
     build: ./ai-tagging

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — WarehouseMS</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --bg: #2b2d42;
+      --surface: #1e1e2e;
+      --accent: #7c6af7;
+      --accent-hover: #6a58e5;
+      --accent-glow: rgba(124, 106, 247, 0.35);
+      --text: #e0e0f0;
+      --muted: #8888aa;
+      --border: rgba(124, 106, 247, 0.18);
+      --radius: 12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .auth-wrap {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 1.75rem;
+      text-decoration: none;
+    }
+    .auth-logo i { font-size: 1.2rem; }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2rem 2rem 1.75rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    .auth-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+    }
+    .auth-sub {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.6rem;
+    }
+
+    .alert {
+      background: rgba(239, 83, 80, 0.12);
+      border: 1px solid rgba(239, 83, 80, 0.35);
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.855rem;
+      color: #ef9a9a;
+      margin-bottom: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+    .form-input-wrap {
+      position: relative;
+    }
+    .form-input-wrap i {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem 0.65rem 2.35rem;
+      color: var(--text);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124, 106, 247, 0.14);
+    }
+    .form-input::placeholder { color: var(--muted); }
+
+    .hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+    }
+    .btn-submit:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 18px var(--accent-glow);
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: 0.855rem;
+      color: var(--muted);
+    }
+    .auth-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(124,106,247,0.25); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="auth-wrap">
+    <a href="/" class="auth-logo">
+      <i class="fa-solid fa-warehouse"></i>
+      WarehouseMS
+    </a>
+
+    <div class="auth-card">
+      <div class="auth-title">Create an account</div>
+      <div class="auth-sub">Join WarehouseMS to manage your inventory</div>
+
+      {% if error %}
+      <div class="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/register">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="first_name">First Name</label>
+            <div class="form-input-wrap">
+              <i class="fa-solid fa-user"></i>
+              <input class="form-input" type="text" id="first_name" name="first_name"
+                     placeholder="Jane" autocomplete="given-name">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="last_name">Last Name</label>
+            <div class="form-input-wrap">
+              <i class="fa-solid fa-user"></i>
+              <input class="form-input" type="text" id="last_name" name="last_name"
+                     placeholder="Smith" autocomplete="family-name">
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:1rem;">
+          <label class="form-label" for="email">Email</label>
+          <div class="form-input-wrap">
+            <i class="fa-solid fa-envelope"></i>
+            <input class="form-input" type="email" id="email" name="email"
+                   placeholder="you@example.com" required autocomplete="email">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="form-input-wrap">
+            <i class="fa-solid fa-lock"></i>
+            <input class="form-input" type="password" id="password" name="password"
+                   placeholder="••••••••" required autocomplete="new-password" minlength="6">
+          </div>
+          <div class="hint">At least 6 characters</div>
+        </div>
+        <button class="btn-submit" type="submit">
+          <i class="fa-solid fa-user-plus"></i>
+          Create Account
+        </button>
+      </form>
+    </div>
+
+    <div class="auth-footer">
+      Already have an account?
+      <a href="/login">Sign in</a>
+    </div>
+  </div>
+</body>
+</html>

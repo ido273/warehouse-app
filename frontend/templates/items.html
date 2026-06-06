@@ -95,9 +95,17 @@
               <span class="badge badge-accent"><i class="fa-solid fa-tag"></i> {{ item.category }}</span>
             </div>
             {% endif %}
+            {% if item.last_modified_by %}
+            <div style="margin-top:0.2rem;">
+              <span style="color:var(--muted);font-size:0.75rem;"><i class="fa-solid fa-pen" style="font-size:0.7rem;"></i> {{ item.last_modified_by }}</span>
+            </div>
+            {% endif %}
           </div>
         </div>
         <div class="card-right">
+          {% if (item.quantity or 1) > 1 %}
+          <span class="badge badge-green"><i class="fa-solid fa-layer-group"></i> ×{{ item.quantity }}</span>
+          {% endif %}
           {% set b = boxes_map.get(item.box_id) if item.box_id else none %}
           {% if b %}
           <span class="badge badge-gray">
@@ -114,6 +122,7 @@
         </div>
       </div>
     </a>
+    {% if active_workspace_role and active_workspace_role != 'viewer' %}
     <button class="card-menu-btn"
             data-type="item"
             data-id="{{ item.id }}"
@@ -122,11 +131,13 @@
             data-location="{{ (item.location or '') | e }}"
             data-box-id="{{ item.box_id or '' }}"
             data-tags='{{ item.tags | tojson }}'
+            data-quantity="{{ item.quantity or 1 }}"
             data-image="{{ item.image or '' }}"
             onclick="openCardMenu(event, this)"
             title="Options">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
+    {% endif %}
   </div>
   {% endfor %}
 </div>

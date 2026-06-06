@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Request Pending — WarehouseMS</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --bg: #2b2d42;
+      --surface: #1e1e2e;
+      --accent: #7c6af7;
+      --accent-hover: #6a58e5;
+      --accent-glow: rgba(124, 106, 247, 0.35);
+      --text: #e0e0f0;
+      --muted: #8888aa;
+      --border: rgba(124, 106, 247, 0.18);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .wrap { width: 100%; max-width: 420px; text-align: center; }
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 2rem;
+      text-decoration: none;
+    }
+    .icon-wrap {
+      width: 80px;
+      height: 80px;
+      background: rgba(124, 106, 247, 0.14);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: var(--accent);
+      margin: 0 auto 1.5rem;
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(124,106,247,0.35); }
+      50%       { box-shadow: 0 0 0 14px rgba(124,106,247,0); }
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.65rem; }
+    p  { color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    .step-list {
+      list-style: none;
+      text-align: left;
+      background: rgba(124,106,247,0.06);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .step-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 0.3rem 0;
+    }
+    .step-list li i { color: var(--accent); width: 16px; text-align: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.4rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 18px var(--accent-glow);
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-top: 0.6rem;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a href="/" class="logo">
+      <i class="fa-solid fa-warehouse"></i> WarehouseMS
+    </a>
+    <div class="card">
+      <div class="icon-wrap">
+        <i class="fa-solid fa-hourglass-half"></i>
+      </div>
+      <h1>Request pending approval</h1>
+      <p>Your request to join the workspace has been sent. The workspace admin will review it shortly.</p>
+      <ul class="step-list">
+        <li><i class="fa-solid fa-check-circle"></i> Request submitted successfully</li>
+        <li><i class="fa-solid fa-clock"></i> Waiting for admin approval</li>
+        <li><i class="fa-solid fa-arrow-right-to-bracket"></i> You'll be added as a viewer once approved</li>
+      </ul>
+      <a href="/onboarding" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> Join a different workspace
+      </a>
+      <a href="/logout" class="btn btn-ghost">
+        <i class="fa-solid fa-right-from-bracket"></i> Sign out
+      </a>
+    </div>
+  </div>
+<script>
+  async function checkApproval() {
+    try {
+      const r = await fetch('/api/auth/me');
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data.workspaces && data.workspaces.length > 0) {
+        window.location.href = '/';
+      }
+    } catch {}
+  }
+  setInterval(checkApproval, 10000);
+</script>
+</body>
+</html>

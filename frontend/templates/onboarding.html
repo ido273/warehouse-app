@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set Up Workspace — WarehouseMS</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --bg: #2b2d42;
+      --surface: #1e1e2e;
+      --surface2: #252538;
+      --accent: #7c6af7;
+      --accent-hover: #6a58e5;
+      --accent-glow: rgba(124, 106, 247, 0.35);
+      --text: #e0e0f0;
+      --muted: #8888aa;
+      --border: rgba(124, 106, 247, 0.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      text-decoration: none;
+    }
+
+    .page-sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    .divider-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.5rem 0;
+    }
+    .divider-row hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+    .divider-row span { color: var(--muted); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(124, 106, 247, 0.14);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .card-title { font-size: 1.05rem; font-weight: 700; }
+    .card-desc  { font-size: 0.8rem; color: var(--muted); margin-top: 0.15rem; }
+
+    .alert {
+      background: rgba(239, 83, 80, 0.12);
+      border: 1px solid rgba(239, 83, 80, 0.35);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.845rem;
+      color: #ef9a9a;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+    .form-input-wrap { position: relative; }
+    .form-input-wrap i {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem 0.65rem 2.35rem;
+      color: var(--text);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124, 106, 247, 0.14);
+    }
+    .form-input::placeholder { color: var(--muted); }
+
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 18px var(--accent-glow);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+    }
+    .btn-outline:hover { background: rgba(124, 106, 247, 0.1); }
+
+    .skip-link {
+      display: block;
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .skip-link a { color: var(--muted); text-decoration: underline; }
+    .skip-link a:hover { color: var(--text); }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(124,106,247,0.25); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a href="/" class="logo">
+      <i class="fa-solid fa-warehouse"></i>
+      WarehouseMS
+    </a>
+    <p class="page-sub">Every inventory lives in a workspace. Create one or join an existing team.</p>
+
+    <!-- Create workspace -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-building-circle-check"></i></div>
+        <div>
+          <div class="card-title">Create a new workspace</div>
+          <div class="card-desc">Start fresh — you'll be the admin</div>
+        </div>
+      </div>
+
+      {% if create_error %}
+      <div class="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i> {{ create_error }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/onboarding/create">
+        <div class="form-group">
+          <label class="form-label" for="ws-name">Workspace name</label>
+          <div class="form-input-wrap">
+            <i class="fa-solid fa-building"></i>
+            <input class="form-input" type="text" id="ws-name" name="name"
+                   placeholder="e.g. Main Warehouse" required autocomplete="off">
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit">
+          <i class="fa-solid fa-plus"></i> Create Workspace
+        </button>
+      </form>
+    </div>
+
+    <div class="divider-row">
+      <hr><span>or join an existing one</span><hr>
+    </div>
+
+    <!-- Join workspace -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-people-group"></i></div>
+        <div>
+          <div class="card-title">Join with an invite code</div>
+          <div class="card-desc">Ask your team admin for the 8-character code</div>
+        </div>
+      </div>
+
+      {% if join_error %}
+      <div class="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i> {{ join_error }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/onboarding/join">
+        <div class="form-group">
+          <label class="form-label" for="invite-code">Invite code</label>
+          <div class="form-input-wrap">
+            <i class="fa-solid fa-key"></i>
+            <input class="form-input" type="text" id="invite-code" name="invite_code"
+                   placeholder="e.g. a3f9b12c" required autocomplete="off"
+                   maxlength="8" style="text-transform:lowercase;letter-spacing:0.08em;">
+          </div>
+        </div>
+        <button class="btn btn-outline" type="submit">
+          <i class="fa-solid fa-right-to-bracket"></i> Join Workspace
+        </button>
+      </form>
+    </div>
+
+    <p class="skip-link">
+      Already set up? <a href="/">Go to dashboard</a>
+    </p>
+  </div>
+</body>
+</html>
