@@ -8,8 +8,9 @@ services:
     environment:
       FLASK_ENV: development
       FLASK_DEBUG: "1"
-      SECRET_KEY: REDACTED
-      AUTH_SERVICE_URL: http://auth-service:8080
+      SECRET_KEY: ${SECRET_KEY}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      BACKEND_URL: ${BACKEND_URL}
     depends_on:
       auth-service:
         condition: service_healthy
@@ -19,8 +20,8 @@ services:
     ports:
       - "5003:8080"
     environment:
-      DATABASE_URL: mysql+pymysql://warehouse_user:REDACTED@mysql/warehouse_db
-      JWT_SECRET_KEY: REDACTED
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     depends_on:
       mysql:
         condition: service_healthy
@@ -35,8 +36,8 @@ services:
     ports:
       - "5001:8080"
     environment:
-      DATABASE_URL: mysql+pymysql://warehouse_user:REDACTED@mysql/warehouse_db
-      AUTH_SERVICE_URL: http://auth-service:8080
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
     volumes:
       - backend_uploads:/app/uploads
     depends_on:
@@ -57,10 +58,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: REDACTED
-      MYSQL_DATABASE: warehouse_db
-      MYSQL_USER: warehouse_user
-      MYSQL_PASSWORD: REDACTED
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:

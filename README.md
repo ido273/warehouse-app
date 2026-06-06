@@ -1,5 +1,13 @@
 WarehouseMS — Smart Warehouse Management System
 A SaaS platform for managing and monitoring storage locations, suitable for both home and commercial use.
+
+## Setup
+
+Copy `.env.example` to `.env` and fill in your values before running:
+```bash
+cp .env.example .env
+docker compose up -d
+```
 Features
 Inventory Management
 
