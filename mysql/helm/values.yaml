@@ -1,0 +1,10 @@
+image:
+  tag: "9.7"
+
+auth:
+  database: "warehouse_db"
+  username: "warehouse_user"
+
+primary:
+  persistence:
+    size: 1Gi

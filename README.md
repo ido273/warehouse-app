@@ -41,3 +41,27 @@ Data Export
 
 Export to CSV
 Export to Excel
+
+## Secrets & Configuration
+
+### Local Development
+
+Copy the example and fill in your values:
+```bash
+cp .env.example .env
+```
+
+For MySQL Helm chart, create a local values file (not committed to Git):
+```bash
+cp mysql/helm/values-local.example.yaml mysql/helm/values-local.yaml
+```
+Then edit `values-local.yaml` with your passwords.
+
+### Production (Kubernetes)
+
+Create a Kubernetes Secret before deploying:
+```bash
+kubectl create secret generic warehouse-mysql-secret \
+  --from-literal=mysql-root-password="your-root-password" \
+  --from-literal=mysql-password="your-password"
+```

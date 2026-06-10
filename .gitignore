@@ -19,3 +19,7 @@ backend/uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# sql
+**/values-local.yaml
+**/values-secret.yaml

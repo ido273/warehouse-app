@@ -1,0 +1,4 @@
+auth:
+  rootPassword: "your-root-password"
+  password: "your-password"
+  
