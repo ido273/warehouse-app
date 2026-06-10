@@ -439,6 +439,7 @@ def upload_box_image(box_id):
 @app.route("/api/boxes/<int:box_id>/qr", methods=["GET"])
 def get_box_qr(box_id):
     from PIL import Image, ImageDraw, ImageFont
+    from bidi.algorithm import get_display
 
     ws_id = _get_workspace_id()
     box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
@@ -447,8 +448,8 @@ def get_box_qr(box_id):
     qr_img  = qrcode.make(qr_data).convert("RGB")
 
     qr_w, qr_h = qr_img.size
-    font     = ImageFont.load_default(size=20)
-    label    = f"ID: {box.code} | {box.name}"
+    font     = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=20)
+    label    = get_display(f"{box.code} | {box.name}")
     banner_h = 40
 
     combined = Image.new("RGB", (qr_w, qr_h + banner_h), "white")
