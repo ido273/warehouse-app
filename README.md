@@ -65,3 +65,31 @@ kubectl create secret generic warehouse-mysql-secret \
   --from-literal=mysql-root-password="your-root-password" \
   --from-literal=mysql-password="your-password"
 ```
+
+## Building & Pushing Images
+
+Images are built for both `linux/amd64` and `linux/arm64` platforms.
+
+### Prerequisites
+```bash
+docker buildx create --use
+```
+
+### Build and push all services
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/ido273/warehouse-backend:v1.0.0 --push ./backend
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/ido273/warehouse-frontend:v1.0.0 --push ./frontend
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/ido273/warehouse-auth-service:v1.0.0 --push ./auth-service
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/ido273/warehouse-ai-tagging:v1.0.0 --push ./ai-tagging
+```
+
+### Why multi-platform?
+Development machines (Apple Silicon) use `arm64`.
+Production servers use `amd64`. Building for both ensures compatibility.

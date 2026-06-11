@@ -9,10 +9,9 @@ replicaCount: 1
 image:
   repository: ghcr.io/ido273/warehouse-ai-tagging
   tag: v1.0.0
-  pullPolicy: always
-# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-imagePullSecrets: []
-# This is to override the chart name.
+  pullPolicy: Always
+imagePullSecrets:
+  - name: ghcr-secret
 nameOverride: ""
 fullnameOverride: ""
 
