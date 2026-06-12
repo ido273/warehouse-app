@@ -18,6 +18,10 @@ spec:
           image: mysql:{{ .Values.image.tag }}
           ports:
             - containerPort: 3306
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 250m
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: {{ .Values.auth.rootPassword }}
@@ -30,6 +34,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: mysql-init-scripts
   volumeClaimTemplates:
     - metadata:
         name: data

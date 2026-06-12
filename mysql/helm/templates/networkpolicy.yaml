@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-network-policy
+  namespace: warehouse
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: warehouse-backend
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: warehouse-auth-service
+  policyTypes:
+  - Ingress

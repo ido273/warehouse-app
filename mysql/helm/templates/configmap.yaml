@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init-scripts
+  namespace: warehouse
+data:
+  init.sql: |
+    GRANT SELECT, INSERT, UPDATE, DELETE
+    ON warehouse_db.* TO 'warehouse_user'@'%';
+    FLUSH PRIVILEGES;
