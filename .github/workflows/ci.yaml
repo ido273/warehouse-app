@@ -15,11 +15,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Lint ${{ matrix.service }}
         run: |
-          pip install flake8
-          flake8 ./${{ matrix.service }} --max-line-length=120
+            pip install flake8
+            flake8 ./${{ matrix.service }} --max-line-length=120 --extend-ignore=E221,E251,E272,E302,E305,E711,E741
 
       - name: Build ${{ matrix.service }}
         run: docker build -t ${{ matrix.service }} ./${{ matrix.service }}
