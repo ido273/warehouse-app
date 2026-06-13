@@ -42,13 +42,14 @@ jobs:
 
       - name: Test ${{ matrix.service }}
         run: |
-          docker run -d --name test-${{ matrix.service }} \
-            -e DATABASE_URL=mysql+pymysql://warehouse_user:test@127.0.0.1/warehouse_db \
+            docker run -d --name test-${{ matrix.service }} \
+            --add-host=host.docker.internal:host-gateway \
+            -e DATABASE_URL=mysql+pymysql://warehouse_user:test@host.docker.internal/warehouse_db \
             -e JWT_SECRET_KEY=test \
             -e SECRET_KEY=test \
             -p 8080:8080 \
             ${{ matrix.service }}
-          sleep 35
-          curl --fail http://localhost:8080/health || \
-            (docker logs test-${{ matrix.service }} && exit 1)
-          docker stop test-${{ matrix.service }}
+            sleep 35
+            docker logs test-${{ matrix.service }}
+            curl --fail http://localhost:8080/health
+            docker stop test-${{ matrix.service }}
