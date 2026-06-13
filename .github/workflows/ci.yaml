@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend, frontend, auth-service, ai-tagging]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint ${{ matrix.service }}
+        run: |
+          pip install flake8
+          flake8 ./${{ matrix.service }} --max-line-length=120
+
+      - name: Build ${{ matrix.service }}
+        run: docker build -t ${{ matrix.service }} ./${{ matrix.service }}
+      - name: Test ${{ matrix.service }}
+        run: |
+            docker run -d --name test-${{ matrix.service }} \
+            -e DATABASE_URL=sqlite:///test.db \
+            -e JWT_SECRET_KEY=test \
+            -e SECRET_KEY=test \
+            -p 8080:8080 \
+            ${{ matrix.service }}
+            sleep 5
+            curl --fail http://localhost:8080/health
+            docker stop test-${{ matrix.service }}

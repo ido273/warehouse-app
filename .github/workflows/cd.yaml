@@ -1,0 +1,54 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend, frontend, auth-service, ai-tagging]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push ${{ matrix.service }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker buildx create --use
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t $ECR_REGISTRY/warehouse-${{ matrix.service }}:$IMAGE_TAG \
+            --push \
+            ./${{ matrix.service }}
+
+      - name: Update gitops repo
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git clone https://x-access-token:$GH_TOKEN@github.com/ido273/warehouse-gitops.git
+          cd warehouse-gitops
+          sed -i "s|tag:.*|tag: $IMAGE_TAG|g" apps/${{ matrix.service }}/values.yaml
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add .
+          git commit -m "ci: update ${{ matrix.service }} image to $IMAGE_TAG"
+          git push
