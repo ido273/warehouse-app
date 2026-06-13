@@ -2333,13 +2333,33 @@
   }
 
   // ── Invite code copy ──
+  function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
   function copySidebarInviteCode() {
     const code = document.getElementById('sidebar-invite-code')?.textContent?.trim();
-    if (code) navigator.clipboard.writeText(code).then(() => showToast('Invite code copied!'));
+    if (!code) return;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(code).then(() => showToast('Invite code copied!')).catch(() => { fallbackCopy(code); showToast('Invite code copied!'); });
+    } else {
+      fallbackCopy(code);
+      showToast('Invite code copied!');
+    }
   }
   function copySettingsInviteCode() {
     const code = document.getElementById('settings-invite-code')?.textContent?.trim();
-    if (code) navigator.clipboard.writeText(code).then(() => showToast('Invite code copied!'));
+    if (!code) return;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(code).then(() => showToast('Invite code copied!')).catch(() => { fallbackCopy(code); showToast('Invite code copied!'); });
+    } else {
+      fallbackCopy(code);
+      showToast('Invite code copied!');
+    }
   }
 
   // ── Manage Locations Modal ──
