@@ -11,25 +11,44 @@ jobs:
     strategy:
       matrix:
         service: [backend, frontend, auth-service, ai-tagging]
-    
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: warehouse_db
+          MYSQL_USER: warehouse_user
+          MYSQL_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Lint ${{ matrix.service }}
         run: |
-            pip install flake8
-            flake8 ./${{ matrix.service }} --max-line-length=120 --extend-ignore=E221,E251,E272,E302,E305,E711,E741
+          pip install flake8
+          flake8 ./${{ matrix.service }} --max-line-length=120 --extend-ignore=E221,E251,E272,E302,E305,E711,E741
 
       - name: Build ${{ matrix.service }}
         run: docker build -t ${{ matrix.service }} ./${{ matrix.service }}
+
       - name: Test ${{ matrix.service }}
         run: |
-            docker run -d --name test-${{ matrix.service }} \
-            -e DATABASE_URL=sqlite:///test.db \
+          docker run -d --name test-${{ matrix.service }} \
+            -e DATABASE_URL=mysql+pymysql://warehouse_user:test@127.0.0.1/warehouse_db \
             -e JWT_SECRET_KEY=test \
             -e SECRET_KEY=test \
             -p 8080:8080 \
             ${{ matrix.service }}
-            sleep 5
-            curl --fail http://localhost:8080/health
-            docker stop test-${{ matrix.service }}
+          sleep 35
+          curl --fail http://localhost:8080/health || \
+            (docker logs test-${{ matrix.service }} && exit 1)
+          docker stop test-${{ matrix.service }}
