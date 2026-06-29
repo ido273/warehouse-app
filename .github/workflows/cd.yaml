@@ -46,7 +46,7 @@ jobs:
         run: |
           git clone https://x-access-token:$GH_TOKEN@github.com/ido273/warehouse-gitops.git
           cd warehouse-gitops
-          sed -i "s|tag:.*|tag: $IMAGE_TAG|g" apps/${{ matrix.service }}/values.yaml
+          sed -i "s|tag:.*|tag: $IMAGE_TAG|g" values/${{ matrix.service }}-values.yaml
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
           git add .
