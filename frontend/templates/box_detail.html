@@ -36,8 +36,16 @@
 
   <div class="qr-card">
     <div class="qr-label"><i class="fa-solid fa-qrcode"></i> QR Code</div>
-    <img src="/api/boxes/{{ box.id }}/qr" alt="QR code for {{ box.name }}" loading="lazy">
+    <img id="qr-img" src="/api/boxes/{{ box.id }}/qr" alt="QR code for {{ box.name }}" loading="lazy">
     <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);">{{ box.code }}</div>
+    {% if active_workspace_role in ['manager', 'admin'] %}
+    <button id="visibility-btn"
+            data-public="{{ 'true' if box.is_public else 'false' }}"
+            onclick="toggleVisibility()"
+            style="margin-top:0.6rem;cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.3rem 0.75rem;font-size:0.8rem;color:var(--text);width:100%;">
+      {{ '🌐 Public' if box.is_public else '🔒 Private' }}
+    </button>
+    {% endif %}
   </div>
 
   <!-- Edit button for the box -->
@@ -141,6 +149,28 @@
 
 {% block extra_scripts %}
 <script>
+  async function toggleVisibility() {
+    const btn = document.getElementById('visibility-btn');
+    const isPublic = btn.dataset.public === 'true';
+    const newVal = !isPublic;
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/boxes/{{ box.id }}/visibility', {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({is_public: newVal}),
+      });
+      if (r.ok) {
+        btn.dataset.public = newVal ? 'true' : 'false';
+        btn.textContent = newVal ? '🌐 Public' : '🔒 Private';
+        document.getElementById('qr-img').src =
+          '/api/boxes/{{ box.id }}/qr?t=' + Date.now();
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function relTime(iso) {
     const s = (Date.now() - new Date(iso)) / 1000;
     if (s < 60)     return 'just now';

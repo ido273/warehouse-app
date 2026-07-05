@@ -187,6 +187,15 @@ def backend_delete(path):
     return status if status is not None else 500
 
 
+def backend_patch(path, data):
+    content, status, _ = http_request(
+        "PATCH", f"{BACKEND_URL}{path}", json_data=data, timeout=5, headers=_auth_headers()
+    )
+    if content is None or status is None:
+        return None, 500
+    return parse_json(content), status
+
+
 def auth_post(path, data, headers=None):
     content, status, _ = http_request(
         "POST", f"{AUTH_SERVICE_URL}{path}", json_data=data, timeout=5, headers=headers or {}
@@ -527,6 +536,16 @@ def create_item():
 def update_box(box_id):
     data = request.get_json(silent=True) or {}
     result, status = backend_put(f"/api/boxes/{box_id}", data)
+    if status is None or status >= 500:
+        return jsonify({"error": "Update failed"}), 500
+    return jsonify(result or {}), status
+
+
+@app.route("/api/boxes/<int:box_id>/visibility", methods=["PATCH"])
+@require_login
+def update_box_visibility(box_id):
+    data = request.get_json(silent=True) or {}
+    result, status = backend_patch(f"/api/boxes/{box_id}/visibility", data)
     if status is None or status >= 500:
         return jsonify({"error": "Update failed"}), 500
     return jsonify(result or {}), status

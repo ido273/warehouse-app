@@ -150,6 +150,7 @@ class Box(db.Model):
     location         = db.Column(db.String(255))
     code             = db.Column(db.String(10), unique=True, nullable=False, default="")
     image            = db.Column(db.String(255), nullable=True)
+    is_public        = db.Column(db.Boolean, nullable=False, default=False)
     workspace_id     = db.Column(db.Integer, nullable=True)
     last_modified_by = db.Column(db.String(255), nullable=True)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
@@ -163,6 +164,7 @@ class Box(db.Model):
             "name":             self.name,
             "location":         self.location,
             "image":            self.image,
+            "is_public":        bool(self.is_public),
             "workspace_id":     self.workspace_id,
             "last_modified_by": self.last_modified_by,
             "created_at":       self.created_at.isoformat() if self.created_at else None,
@@ -279,6 +281,7 @@ def _run_migrations(conn):
         ("items", "quantity",         "INT NOT NULL DEFAULT 1"),
         ("boxes", "last_modified_by", "VARCHAR(255)"),
         ("items", "last_modified_by", "VARCHAR(255)"),
+        ("boxes", "is_public",        "TINYINT(1) NOT NULL DEFAULT 0"),
     ]
     for table, col, col_type in migrations:
         try:
@@ -444,7 +447,10 @@ def get_box_qr(box_id):
     ws_id = _get_workspace_id()
     box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
 
-    qr_data = f"box:{box.code}:{box.name}"
+    if box.is_public:
+        qr_data = f"{request.url_root.rstrip('/')}/api/boxes/{box.id}/public"
+    else:
+        qr_data = f"box:{box.code}:{box.name}"
     qr_img  = qrcode.make(qr_data).convert("RGB")
 
     qr_w, qr_h = qr_img.size
@@ -465,6 +471,41 @@ def get_box_qr(box_id):
     combined.save(buf, format="PNG")
     buf.seek(0)
     return send_file(buf, mimetype="image/png")
+
+
+# ---------------------------------------------------------------------------
+# Boxes — public endpoint & visibility toggle
+# ---------------------------------------------------------------------------
+
+@app.route("/api/boxes/<int:box_id>/public", methods=["GET"])
+def get_box_public(box_id):
+    box = Box.query.filter_by(id=box_id).first_or_404()
+    if not box.is_public:
+        return jsonify({"error": "This box is not public"}), 403
+    data = box.to_dict()
+    data["items"] = [i.to_dict() for i in box.items]
+    return jsonify(data)
+
+
+@app.route("/api/boxes/<int:box_id>/visibility", methods=["PATCH"])
+def update_box_visibility(box_id):
+    err = _check_role("manager", "admin")
+    if err:
+        return err
+    ws_id = _get_workspace_id()
+    box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
+    data  = request.get_json(silent=True) or {}
+    if "is_public" not in data:
+        return jsonify({"error": "'is_public' is required"}), 400
+    old_val   = box.is_public
+    box.is_public = bool(data["is_public"])
+    user_display  = get_current_user_display_name()
+    box.last_modified_by = user_display
+    if old_val != box.is_public:
+        log_change("box", box.id, "updated", user_display, ws_id,
+                   {"is_public": (old_val, box.is_public)})
+    db.session.commit()
+    return jsonify(box.to_dict())
 
 
 # ---------------------------------------------------------------------------
