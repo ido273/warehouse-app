@@ -28,6 +28,13 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
           {{- range .paths }}
           - path: {{ .path }}
             {{- with .pathType }}
