@@ -6,6 +6,7 @@ import uuid
 import urllib.request as _urllib_request
 from datetime import datetime
 
+import boto3
 import qrcode
 from flask import Flask, jsonify, request, send_file, send_from_directory, abort, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -24,6 +25,11 @@ AUTH_SERVICE_URL   = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:808
 UPLOAD_FOLDER      = os.environ.get("UPLOAD_FOLDER", "/app/uploads")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+S3_REGION      = "eu-west-1"
+S3_URL_PREFIX  = f"https://{S3_BUCKET_NAME}.s3.{S3_REGION}.amazonaws.com/"
+s3_client      = boto3.client("s3", region_name=S3_REGION)
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
@@ -31,23 +37,30 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def save_upload(file, prefix):
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+def upload_to_s3(file, prefix):
     safe_name = secure_filename(file.filename or "upload")
     parts     = safe_name.rsplit(".", 1)
     ext       = parts[1].lower() if len(parts) == 2 else "jpg"
-    filename  = f"{prefix}_{uuid.uuid4().hex[:10]}.{ext}"
-    dest      = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(dest)
-    print(f"[upload] saved → {dest}  (size={os.path.getsize(dest)}B)", flush=True)
-    return filename
+    key       = f"images/{uuid.uuid4()}.{ext}"
+    s3_client.upload_fileobj(file, S3_BUCKET_NAME, key)
+    url = f"{S3_URL_PREFIX}{key}"
+    print(f"[upload] uploaded → {url}", flush=True)
+    return url
 
 
 def remove_file(filename):
-    if filename:
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.exists(path):
-            os.remove(path)
+    if not filename:
+        return
+    if filename.startswith(S3_URL_PREFIX):
+        key = filename[len(S3_URL_PREFIX):]
+        try:
+            s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=key)
+        except Exception as exc:
+            print(f"[upload] failed to delete s3 object {key}: {exc}", flush=True)
+        return
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    if os.path.exists(path):
+        os.remove(path)
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +444,7 @@ def upload_box_image(box_id):
     if not file.filename or not allowed_file(file.filename):
         abort(400, description="Invalid file type — use jpg, png, gif, or webp")
     remove_file(box.image)
-    box.image = save_upload(file, f"box_{box_id}")
+    box.image = upload_to_s3(file, f"box_{box_id}")
     user_display = get_current_user_display_name()
     box.last_modified_by = user_display
     log_change("box", box.id, "updated", user_display, ws_id, {"image": (None, box.image)})
@@ -682,7 +695,7 @@ def upload_item_image(item_id):
     if not file.filename or not allowed_file(file.filename):
         abort(400, description="Invalid file type — use jpg, png, gif, or webp")
     remove_file(item.image)
-    item.image = save_upload(file, f"item_{item_id}")
+    item.image = upload_to_s3(file, f"item_{item_id}")
     user_display = get_current_user_display_name()
     item.last_modified_by = user_display
     log_change("item", item.id, "updated", user_display, ws_id, {"image": (None, item.image)})
