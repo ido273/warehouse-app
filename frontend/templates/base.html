@@ -1324,6 +1324,13 @@
                style="display:none;margin-top:0.35rem;" autocomplete="off">
       </div>
       <div class="form-group">
+        <label class="form-label">Visibility</label>
+        <button type="button" id="box-is-public-btn" data-public="false" onclick="toggleBoxPublicDraft()"
+                style="cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.55rem 0.75rem;font-size:0.85rem;color:var(--text);width:100%;">
+          🔒 Private
+        </button>
+      </div>
+      <div class="form-group">
         <label class="form-label">
           Image
           <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
@@ -1470,6 +1477,13 @@
         </select>
         <input class="form-input" type="text" id="edit-box-location-custom" placeholder="New location name…"
                style="display:none;margin-top:0.35rem;" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Visibility</label>
+        <button type="button" id="edit-box-is-public-btn" data-public="false" onclick="toggleEditBoxVisibility()"
+                style="cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.55rem 0.75rem;font-size:0.85rem;color:var(--text);width:100%;">
+          🔒 Private
+        </button>
       </div>
       <div class="form-group">
         <label class="form-label">
@@ -1761,6 +1775,40 @@
     clearTagChips();
     resetImgArea('box-image', 'box-image-area');
     resetImgArea('item-image', 'item-image-area');
+    const pubBtn = document.getElementById('box-is-public-btn');
+    pubBtn.dataset.public = 'false';
+    pubBtn.textContent = '🔒 Private';
+  }
+
+  // ── Box visibility toggles ──
+  function toggleBoxPublicDraft() {
+    const btn = document.getElementById('box-is-public-btn');
+    const newVal = btn.dataset.public !== 'true';
+    btn.dataset.public = newVal ? 'true' : 'false';
+    btn.textContent = newVal ? '🌐 Public' : '🔒 Private';
+  }
+
+  async function toggleEditBoxVisibility() {
+    const btn    = document.getElementById('edit-box-is-public-btn');
+    const newVal = btn.dataset.public !== 'true';
+    const id     = menuData.id;
+    btn.disabled = true;
+    try {
+      const r = await fetch(`/api/boxes/${id}/visibility`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_public: newVal }),
+      });
+      if (r.ok) {
+        btn.dataset.public = newVal ? 'true' : 'false';
+        btn.textContent = newVal ? '🌐 Public' : '🔒 Private';
+        needsReload = true;
+        showToast(newVal ? 'Box is now public' : 'Box is now private');
+      } else {
+        showToast('Failed to update visibility', 'error');
+      }
+    } catch { showToast('Network error', 'error'); }
+    finally { btn.disabled = false; }
   }
 
   // ── Image preview & upload helpers ──
@@ -1832,7 +1880,10 @@
       const r = await fetch('/api/boxes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, location: boxLoc || null })
+        body: JSON.stringify({
+          name, location: boxLoc || null,
+          is_public: document.getElementById('box-is-public-btn').dataset.public === 'true',
+        })
       });
       if (r.ok) {
         const newBox = await r.json();
@@ -2242,6 +2293,10 @@
         }
       }
       resetImgArea('edit-box-image', 'edit-box-image-area');
+      const pubBtn = document.getElementById('edit-box-is-public-btn');
+      const isPub  = d.isPublic === 'true';
+      pubBtn.dataset.public = isPub ? 'true' : 'false';
+      pubBtn.textContent = isPub ? '🌐 Public' : '🔒 Private';
     } else {
       document.getElementById('edit-item-name').value     = d.name     || '';
       document.getElementById('edit-item-category').value = d.category || '';

@@ -22,6 +22,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 AUTH_SERVICE_URL   = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:8080")
+FRONTEND_BASE_URL  = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5000")
 UPLOAD_FOLDER      = os.environ.get("UPLOAD_FOLDER", "/app/uploads")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
@@ -370,7 +371,7 @@ def create_box():
         abort(400, description="'name' is required")
     user_display = get_current_user_display_name()
     box = Box(name=name, location=data.get("location"), workspace_id=ws_id,
-              last_modified_by=user_display)
+              is_public=bool(data.get("is_public", False)), last_modified_by=user_display)
     db.session.add(box)
     db.session.flush()
     log_change("box", box.id, "created", user_display, ws_id)
@@ -460,10 +461,9 @@ def get_box_qr(box_id):
     ws_id = _get_workspace_id()
     box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
 
+    qr_data = f"{FRONTEND_BASE_URL.rstrip('/')}/box/{box.id}"
     if box.is_public:
-        qr_data = f"{request.url_root.rstrip('/')}/api/boxes/{box.id}/public"
-    else:
-        qr_data = f"box:{box.code}:{box.name}"
+        qr_data += "/public"
     qr_img  = qrcode.make(qr_data).convert("RGB")
 
     qr_w, qr_h = qr_img.size

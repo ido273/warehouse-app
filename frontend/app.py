@@ -18,6 +18,18 @@ BACKEND_URL      = os.environ.get("BACKEND_URL", "http://backend:8080")
 AUTH_SERVICE_URL = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:8080")
 
 
+def image_url(img):
+    """Images are stored either as a full S3 URL or (legacy) a local upload filename."""
+    if not img:
+        return ""
+    if img.startswith("http://") or img.startswith("https://"):
+        return img
+    return f"/uploads/{img}"
+
+
+app.jinja_env.filters["image_url"] = image_url
+
+
 # ── Auth helpers ───────────────────────────────────────────────────────────────
 
 def require_login(f):
@@ -378,6 +390,23 @@ def box_detail(box_id):
     all_boxes, locations = sidebar_data()
     return render_template("box_detail.html", box=box, items=box_items,
                            locations=locations, all_boxes=all_boxes)
+
+
+# ── QR targets ───────────────────────────────────────────────────────────────
+
+@app.route("/box/<int:box_id>")
+@require_login
+def box_qr_private(box_id):
+    return redirect(url_for("box_detail", box_id=box_id))
+
+
+@app.route("/box/<int:box_id>/public")
+def box_qr_public(box_id):
+    content, status, _ = http_request("GET", f"{BACKEND_URL}/api/boxes/{box_id}/public", timeout=5)
+    data = parse_json(content) if content else None
+    if status != 200 or not data:
+        return render_template("error.html", message="Box not found or not public"), 404
+    return render_template("box_public.html", box=data, items=data.get("items") or [])
 
 
 @app.route("/items")
