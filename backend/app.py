@@ -462,8 +462,6 @@ def get_box_qr(box_id):
     box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
 
     qr_data = f"{FRONTEND_BASE_URL.rstrip('/')}/box/{box.id}"
-    if box.is_public:
-        qr_data += "/public"
     qr_img  = qrcode.make(qr_data).convert("RGB")
 
     qr_w, qr_h = qr_img.size

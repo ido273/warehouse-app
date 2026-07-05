@@ -36,7 +36,7 @@ def require_login(f):
     @functools.wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("token"):
-            return redirect(url_for("login"))
+            return redirect(url_for("login", next=request.path))
         return f(*args, **kwargs)
     return decorated
 
@@ -246,14 +246,23 @@ def health():
     return jsonify({"status": "ok"})
 
 
+def _safe_next(url):
+    """Only allow same-site relative redirects (no scheme/host)."""
+    if url and url.startswith("/") and not url.startswith("//"):
+        return url
+    return None
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
+        next_url = _safe_next(request.args.get("next"))
         if session.get("token"):
-            return redirect(url_for("index"))
+            return redirect(next_url or url_for("index"))
         registered = request.args.get("registered")
-        return render_template("login.html", registered=registered)
+        return render_template("login.html", registered=registered, next=next_url)
 
+    next_url = _safe_next(request.form.get("next"))
     email    = request.form.get("email", "").strip()
     password = request.form.get("password", "")
     result, status = auth_post("/auth/login", {"email": email, "password": password})
@@ -270,10 +279,10 @@ def login():
         session["workspaces"] = workspaces
         if workspaces:
             session["active_workspace_id"] = workspaces[0]["workspace_id"]
-            return redirect(url_for("index"))
+            return redirect(next_url or url_for("index"))
         return redirect(url_for("onboarding"))
     error = (result or {}).get("error") or "Invalid credentials"
-    return render_template("login.html", error=error)
+    return render_template("login.html", error=error, next=next_url)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -392,21 +401,22 @@ def box_detail(box_id):
                            locations=locations, all_boxes=all_boxes)
 
 
-# ── QR targets ───────────────────────────────────────────────────────────────
+# ── QR target ────────────────────────────────────────────────────────────────
+# Single stable URL regardless of visibility: <FRONTEND_BASE_URL>/box/<id>.
+# Public boxes render directly (no auth); private boxes require login, then
+# land back here and get redirected into the authenticated box page.
 
 @app.route("/box/<int:box_id>")
-@require_login
-def box_qr_private(box_id):
-    return redirect(url_for("box_detail", box_id=box_id))
-
-
-@app.route("/box/<int:box_id>/public")
-def box_qr_public(box_id):
+def box_qr_target(box_id):
     content, status, _ = http_request("GET", f"{BACKEND_URL}/api/boxes/{box_id}/public", timeout=5)
     data = parse_json(content) if content else None
-    if status != 200 or not data:
-        return render_template("error.html", message="Box not found or not public"), 404
-    return render_template("box_public.html", box=data, items=data.get("items") or [])
+    if status == 200 and data:
+        return render_template("box_public.html", box=data, items=data.get("items") or [])
+    if status == 403:
+        if not session.get("token"):
+            return redirect(url_for("login", next=request.path))
+        return redirect(url_for("box_detail", box_id=box_id))
+    return render_template("error.html", message="Box not found"), 404
 
 
 @app.route("/items")

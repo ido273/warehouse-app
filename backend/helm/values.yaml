@@ -159,3 +159,5 @@ env:
     value: "http://auth-service:8080"
   - name: FRONTEND_BASE_URL
     value: "http://a255dbb8fadf141268774524221d9633-183186057.eu-west-1.elb.amazonaws.com"
+  - name: S3_BUCKET_NAME
+    value: "warehouse-images-ido273"
