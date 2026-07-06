@@ -154,8 +154,12 @@ tolerations: []
 
 affinity: {}
 env:
+  # DB URL (with password) comes from the terraform-managed app-secrets Secret.
   - name: DATABASE_URL
-    value: "mysql+pymysql://warehouse_user:warehouse_password@mysql/warehouse_db"
+    valueFrom:
+      secretKeyRef:
+        name: app-secrets
+        key: database-url
   - name: AUTH_SERVICE_URL
     value: "http://auth-service:8080"
   - name: FRONTEND_BASE_URL

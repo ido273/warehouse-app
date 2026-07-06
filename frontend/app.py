@@ -12,7 +12,16 @@ from flask import (
 )
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "wms-dev-secret-key")
+# SECRET_KEY signs the session cookie (which holds the JWT). It must be a
+# strong random value supplied at runtime — never a committed default, or the
+# cookie can be forged. Fail closed if it is missing.
+app.secret_key = os.environ["SECRET_KEY"]
+
+# Harden the session cookie. SESSION_COOKIE_SECURE defaults on (HTTPS only) and
+# can be turned off for local HTTP dev via SESSION_COOKIE_SECURE=false.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() != "false"
 
 BACKEND_URL      = os.environ.get("BACKEND_URL", "http://backend:8080")
 AUTH_SERVICE_URL = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:8080")

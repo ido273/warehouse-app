@@ -158,7 +158,15 @@ tolerations: []
 
 affinity: {}
 env:
+  # DB URL (with password) and JWT signing key come from the terraform-managed
+  # app-secrets Secret, never hard-coded here.
   - name: DATABASE_URL
-    value: "mysql+pymysql://warehouse_user:warehouse_password@mysql/warehouse_db"
+    valueFrom:
+      secretKeyRef:
+        name: app-secrets
+        key: database-url
   - name: JWT_SECRET_KEY
-    value: "changeme-super-secret-jwt-key"
+    valueFrom:
+      secretKeyRef:
+        name: app-secrets
+        key: jwt-secret

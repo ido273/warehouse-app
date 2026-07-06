@@ -161,7 +161,14 @@ env:
     value: "http://backend:8080"
   - name: AUTH_SERVICE_URL
     value: "http://auth-service:8080"
+  # SECRET_KEY signs session cookies — supplied from a Kubernetes Secret, never
+  # hard-coded here. Create it out-of-band (same pattern as mysql-secret), e.g.:
+  #   kubectl create secret generic frontend-secret -n warehouse \
+  #     --from-literal=secret-key="$(openssl rand -hex 32)"
   - name: SECRET_KEY
-    value: "wms-dev-session-secret"
+    valueFrom:
+      secretKeyRef:
+        name: frontend-secret
+        key: secret-key
   - name: FLASK_ENV
     value: "production"

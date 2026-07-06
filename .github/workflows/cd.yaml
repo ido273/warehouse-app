@@ -21,6 +21,11 @@ jobs:
   update-gitops:
     runs-on: ubuntu-latest
     needs: build
+    # Serialize concurrent CD runs so two pushes can't both bump the gitops repo
+    # and collide; queue rather than cancel so no tag update is lost.
+    concurrency:
+      group: gitops-update
+      cancel-in-progress: false
 
     steps:
       - name: Update gitops repo
@@ -37,4 +42,16 @@ jobs:
           done
           git add .
           git commit -m "ci: update all services to $IMAGE_TAG"
-          git push
+          # Retry against concurrent pushes: rebase on latest and re-push.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "pushed on attempt $attempt"
+              break
+            fi
+            echo "push rejected, rebasing (attempt $attempt)"
+            git pull --rebase origin master
+            if [ "$attempt" = "5" ]; then
+              echo "failed to push after retries" >&2
+              exit 1
+            fi
+          done

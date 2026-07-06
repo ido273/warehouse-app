@@ -6,4 +6,4 @@ COPY . .
 EXPOSE 8080
 RUN useradd app
 USER app
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "--timeout", "60", "app:app"]

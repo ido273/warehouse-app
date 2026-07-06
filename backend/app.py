@@ -18,6 +18,11 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL", "mysql+pymysql://root:root@localhost/warehouse"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# Keep pooled connections healthy: ping before use and recycle before MySQL's
+# wait_timeout closes them, avoiding "MySQL server has gone away" after idle.
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True, "pool_recycle": 280}
+# Cap upload size to protect memory / S3 from oversized or abusive uploads.
+app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_UPLOAD_BYTES", 10 * 1024 * 1024))
 
 db = SQLAlchemy(app)
 
@@ -109,6 +114,23 @@ def _check_role(*allowed_roles):
     return None
 
 
+def _check_workspace_access():
+    """Verify the caller is a member of the workspace in X-Workspace-ID.
+
+    Read endpoints previously trusted the X-Workspace-ID header without
+    checking membership, so any authenticated user could read another
+    workspace's data by changing the header (IDOR). Call this at the top of
+    every read endpoint. Returns a 403 tuple when a workspace is requested the
+    caller has no role in; returns None when access is allowed or when no
+    workspace is set (endpoints already handle the no-workspace case).
+    """
+    if _get_workspace_id() is None:
+        return None
+    if not _get_user_role_in_workspace():
+        return jsonify({"error": "You don't have access to this workspace"}), 403
+    return None
+
+
 def get_current_user_display_name():
     auth_header = request.headers.get("Authorization")
     if not auth_header:
@@ -165,7 +187,7 @@ class Box(db.Model):
     code             = db.Column(db.String(10), unique=True, nullable=False, default="")
     image            = db.Column(db.String(255), nullable=True)
     is_public        = db.Column(db.Boolean, nullable=False, default=False)
-    workspace_id     = db.Column(db.Integer, nullable=True)
+    workspace_id     = db.Column(db.Integer, nullable=True, index=True)
     last_modified_by = db.Column(db.String(255), nullable=True)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -202,10 +224,10 @@ class Item(db.Model):
     category         = db.Column(db.String(255))
     location         = db.Column(db.String(255), nullable=True)
     code             = db.Column(db.String(10), unique=True, nullable=False, default="")
-    box_id           = db.Column(db.Integer, db.ForeignKey("boxes.id"), nullable=True)
+    box_id           = db.Column(db.Integer, db.ForeignKey("boxes.id"), nullable=True, index=True)
     image            = db.Column(db.String(255), nullable=True)
     quantity         = db.Column(db.Integer, nullable=False, default=1)
-    workspace_id     = db.Column(db.Integer, nullable=True)
+    workspace_id     = db.Column(db.Integer, nullable=True, index=True)
     last_modified_by = db.Column(db.String(255), nullable=True)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -246,7 +268,7 @@ class Tag(db.Model):
 
     id      = db.Column(db.Integer, primary_key=True)
     name    = db.Column(db.String(255), nullable=False)
-    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False, index=True)
 
     def to_dict(self):
         return {"id": self.id, "name": self.name, "item_id": self.item_id}
@@ -265,6 +287,10 @@ class ChangeLog(db.Model):
     changed_by    = db.Column(db.String(255), nullable=False)
     workspace_id  = db.Column(db.Integer,     nullable=False)
     created_at    = db.Column(db.DateTime,    default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index("ix_change_logs_entity", "entity_type", "entity_id", "workspace_id"),
+    )
 
     def to_dict(self):
         return {
@@ -302,6 +328,23 @@ def _run_migrations(conn):
             conn.execute(text(f"ALTER TABLE `{table}` ADD COLUMN `{col}` {col_type}"))
             conn.commit()
             print(f"[db] ALTER TABLE {table}: added column {col}", flush=True)
+        except Exception:
+            conn.rollback()
+
+    # Indexes on hot query columns. create_all() covers fresh DBs; these add
+    # them to pre-existing tables. Duplicate-index errors are ignored.
+    indexes = [
+        ("ix_boxes_workspace_id",  "boxes",       "(`workspace_id`)"),
+        ("ix_items_workspace_id",  "items",       "(`workspace_id`)"),
+        ("ix_items_box_id",        "items",       "(`box_id`)"),
+        ("ix_tags_item_id",        "tags",        "(`item_id`)"),
+        ("ix_change_logs_entity",  "change_logs", "(`entity_type`, `entity_id`, `workspace_id`)"),
+    ]
+    for name, table, cols in indexes:
+        try:
+            conn.execute(text(f"CREATE INDEX `{name}` ON `{table}` {cols}"))
+            conn.commit()
+            print(f"[db] CREATE INDEX {name} ON {table}", flush=True)
         except Exception:
             conn.rollback()
 
@@ -351,6 +394,9 @@ def serve_upload(filename):
 
 @app.route("/api/boxes", methods=["GET"])
 def get_boxes():
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     if not ws_id:
         return jsonify([])
@@ -381,6 +427,9 @@ def create_box():
 
 @app.route("/api/boxes/<int:box_id>", methods=["GET"])
 def get_box(box_id):
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
     return jsonify(box.to_dict())
@@ -458,6 +507,9 @@ def get_box_qr(box_id):
     from PIL import Image, ImageDraw, ImageFont
     from bidi.algorithm import get_display
 
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     box   = Box.query.filter_by(id=box_id, workspace_id=ws_id).first_or_404()
 
@@ -525,6 +577,9 @@ def update_box_visibility(box_id):
 
 @app.route("/api/items", methods=["GET"])
 def get_items():
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     if not ws_id:
         return jsonify([])
@@ -576,6 +631,9 @@ def create_item():
 
 @app.route("/api/items/search", methods=["GET"])
 def search_items():
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     q     = request.args.get("q", "").strip()
     if not q:
@@ -599,6 +657,9 @@ def search_items():
 
 @app.route("/api/items/<int:item_id>", methods=["GET"])
 def get_item(item_id):
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     item  = Item.query.filter_by(id=item_id, workspace_id=ws_id).first_or_404()
     return jsonify(item.to_dict())
@@ -707,6 +768,9 @@ def upload_item_image(item_id):
 
 @app.route("/api/locations/stats", methods=["GET"])
 def get_location_stats():
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     if not ws_id:
         return jsonify([])
@@ -729,6 +793,9 @@ def get_location_stats():
 
 @app.route("/api/locations/clear", methods=["POST"])
 def clear_location():
+    err = _check_role("contributor", "manager", "admin")
+    if err:
+        return err
     ws_id = _get_workspace_id()
     if not ws_id:
         abort(401, description="X-Workspace-ID header required")
@@ -748,6 +815,9 @@ def clear_location():
 
 @app.route("/api/boxes/<int:box_id>/history", methods=["GET"])
 def get_box_history(box_id):
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     logs  = ChangeLog.query.filter_by(entity_type="box", entity_id=box_id, workspace_id=ws_id)\
         .order_by(ChangeLog.created_at.desc()).all()
@@ -756,6 +826,9 @@ def get_box_history(box_id):
 
 @app.route("/api/items/<int:item_id>/history", methods=["GET"])
 def get_item_history(item_id):
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     logs  = ChangeLog.query.filter_by(entity_type="item", entity_id=item_id, workspace_id=ws_id)\
         .order_by(ChangeLog.created_at.desc()).all()
@@ -769,6 +842,9 @@ def get_item_history(item_id):
 @app.route("/api/export/csv", methods=["GET"])
 def export_csv():
     import csv
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     if not ws_id:
         abort(401, description="X-Workspace-ID header required")
@@ -816,6 +892,9 @@ def export_csv():
 def export_excel():
     import openpyxl
     from openpyxl.styles import Font
+    err = _check_workspace_access()
+    if err:
+        return err
     ws_id = _get_workspace_id()
     if not ws_id:
         abort(401, description="X-Workspace-ID header required")
@@ -884,6 +963,17 @@ def unauthorized(e):
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "not found"}), 404
+
+
+@app.errorhandler(413)
+def payload_too_large(e):
+    return jsonify({"error": "File too large"}), 413
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    db.session.rollback()
+    return jsonify({"error": "Internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------
