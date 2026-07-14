@@ -27,6 +27,7 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_UPLOAD_BYTES", 10 * 1
 db = SQLAlchemy(app)
 
 AUTH_SERVICE_URL   = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:8080")
+AI_TAGGING_URL     = os.environ.get("AI_TAGGING_URL", "http://ai-tagging:8080")
 FRONTEND_BASE_URL  = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5000")
 UPLOAD_FOLDER      = os.environ.get("UPLOAD_FOLDER", "/app/uploads")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
@@ -149,6 +150,28 @@ def get_current_user_display_name():
         return display or data.get("email") or "Unknown"
     except Exception:
         return "Unknown"
+
+
+def fetch_ai_tags(item):
+    """Ask ai-tagging for suggested tags. Returns [] on any failure (network,
+    timeout, bad response) so item creation never fails because of it."""
+    try:
+        payload = json.dumps({
+            "item_id":   item.id,
+            "name":      item.name,
+            "image_url": item.image,
+        }).encode()
+        req = _urllib_request.Request(
+            f"{AI_TAGGING_URL}/tag",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with _urllib_request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+        return data.get("tags") or []
+    except Exception:
+        return []
 
 
 def log_change(entity_type, entity_id, action, changed_by, workspace_id, changes=None):
@@ -621,11 +644,18 @@ def create_item():
     db.session.add(item)
     db.session.flush()
 
-    for tag_name in data.get("tags", []):
+    manual_tags = data.get("tags", [])
+    for tag_name in manual_tags:
         db.session.add(Tag(name=tag_name, item_id=item.id))
 
     log_change("item", item.id, "created", user_display, ws_id)
     db.session.commit()
+
+    for tag_name in fetch_ai_tags(item):
+        if tag_name not in manual_tags:
+            db.session.add(Tag(name=tag_name, item_id=item.id))
+    db.session.commit()
+
     return jsonify(item.to_dict()), 201
 
 

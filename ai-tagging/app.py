@@ -23,6 +23,12 @@ return exactly 5 short relevant tags in JSON format.
 Example: ["cable", "usb", "charging", "electronics", "phone"]
 Return ONLY the JSON array, nothing else."""
 
+TEXT_ONLY_PROMPT = """You are a warehouse inventory tagging system.
+Given an item named '{name}' (no image available),
+return exactly 5 short relevant tags in JSON format.
+Example: ["cable", "usb", "charging", "electronics", "phone"]
+Return ONLY the JSON array, nothing else."""
+
 
 def _fetch_image(image_url):
     resp = requests.get(image_url, timeout=10)
@@ -31,26 +37,11 @@ def _fetch_image(image_url):
     return base64.b64encode(resp.content).decode("utf-8"), media_type
 
 
-def _invoke_bedrock(name, image_b64, media_type):
+def _invoke_bedrock(content):
     body = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 200,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_b64,
-                        },
-                    },
-                    {"type": "text", "text": TAGGING_PROMPT.format(name=name)},
-                ],
-            }
-        ],
+        "messages": [{"role": "user", "content": content}],
     }
 
     response = bedrock.invoke_model(
@@ -72,23 +63,38 @@ def _invoke_bedrock(name, image_b64, media_type):
 
 def generate_tags(name, image_url):
     try:
-        image_b64, media_type = _fetch_image(image_url)
-        return _invoke_bedrock(name, image_b64, media_type)
+        if image_url:
+            image_b64, media_type = _fetch_image(image_url)
+            content = [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": image_b64,
+                    },
+                },
+                {"type": "text", "text": TAGGING_PROMPT.format(name=name)},
+            ]
+        else:
+            content = [{"type": "text", "text": TEXT_ONLY_PROMPT.format(name=name)}]
+
+        return _invoke_bedrock(content)
     except Exception:
         logger.exception("Bedrock tagging failed for '%s', falling back to mock tags", name)
         return MOCK_TAGS
 
 
-@app.route("/suggest-tags", methods=["POST"])
-def suggest_tags():
+@app.route("/tag", methods=["POST"])
+def tag_item():
     data = request.get_json(silent=True) or {}
     name = data.get("name")
     image_url = data.get("image_url")
 
-    if not name or not image_url:
-        return jsonify({"error": "name and image_url are required"}), 400
+    if not name:
+        return jsonify({"error": "name is required"}), 400
 
-    return jsonify({"tags": generate_tags(name, image_url)})
+    return jsonify({"item_id": data.get("item_id"), "tags": generate_tags(name, image_url)})
 
 
 @app.route("/health")
