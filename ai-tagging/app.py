@@ -10,7 +10,7 @@ app = Flask(__name__)
 logger = logging.getLogger(__name__)
 
 BEDROCK_REGION = "eu-west-1"
-BEDROCK_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0"
+BEDROCK_MODEL_ID = "amazon.nova-lite-v1:0"
 
 # Credentials come from the pod's IRSA-bound service account, never hardcoded.
 bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
@@ -39,9 +39,8 @@ def _fetch_image(image_url):
 
 def _invoke_bedrock(content):
     body = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 200,
         "messages": [{"role": "user", "content": content}],
+        "inferenceConfig": {"maxTokens": 200},
     }
 
     response = bedrock.invoke_model(
@@ -52,7 +51,7 @@ def _invoke_bedrock(content):
     )
 
     payload = json.loads(response["body"].read())
-    text = payload["content"][0]["text"].strip()
+    text = payload["output"]["message"]["content"][0]["text"].strip()
     tags = json.loads(text)
 
     if not isinstance(tags, list):
@@ -65,19 +64,18 @@ def generate_tags(name, image_url):
     try:
         if image_url:
             image_b64, media_type = _fetch_image(image_url)
+            image_format = media_type.split("/")[-1]
             content = [
                 {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": media_type,
-                        "data": image_b64,
-                    },
+                    "image": {
+                        "format": image_format,
+                        "source": {"bytes": image_b64},
+                    }
                 },
-                {"type": "text", "text": TAGGING_PROMPT.format(name=name)},
+                {"text": TAGGING_PROMPT.format(name=name)},
             ]
         else:
-            content = [{"type": "text", "text": TEXT_ONLY_PROMPT.format(name=name)}]
+            content = [{"text": TEXT_ONLY_PROMPT.format(name=name)}]
 
         return _invoke_bedrock(content)
     except Exception:
