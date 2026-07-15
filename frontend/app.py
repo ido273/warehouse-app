@@ -577,6 +577,15 @@ def create_item():
     return jsonify({"error": "Failed to create item"}), status
 
 
+@app.route("/api/items/suggest-tags", methods=["GET"])
+@require_login
+def suggest_tags():
+    name = request.args.get("name", "")
+    language = request.args.get("language", "en")
+    data = backend_get("/api/items/suggest-tags", params={"name": name, "language": language})
+    return jsonify(data or {"tags": []})
+
+
 # ── Proxy: update ──────────────────────────────────────────────────────────────
 
 @app.route("/api/boxes/<int:box_id>", methods=["PUT"])

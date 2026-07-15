@@ -582,6 +582,29 @@
     }
     .tag-chip-remove:hover { opacity: 1; background: rgba(124,106,247,0.2); }
 
+    /* ── AI TAG SUGGESTIONS ── */
+    .tag-suggestion {
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .tag-suggestion:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .tag-suggestion:disabled,
+    .tag-suggestion.tag-suggestion-added {
+      opacity: 0.5;
+      cursor: default;
+      border-style: solid;
+    }
+
     /* ── ITEM CONFIRM PANEL ── */
     .item-confirm-panel {
       text-align: center;
@@ -1391,6 +1414,14 @@
             <input type="text" class="tag-raw-input" id="tag-raw-input" placeholder="e.g. cable…">
           </div>
           <input type="hidden" id="item-tags">
+          <button type="button" class="btn btn-ghost" id="item-generate-tags-btn"
+                  style="margin-top:0.5rem;" onclick="generateTags('item')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Tags
+          </button>
+          <div id="item-tags-spinner" style="display:none;margin-top:0.5rem;color:var(--muted);font-size:0.8rem;">
+            <i class="fa-solid fa-spinner fa-spin"></i> Generating tags…
+          </div>
+          <div id="item-tags-suggestions" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
         </div>
         <div class="form-group">
           <label class="form-label">
@@ -1543,6 +1574,14 @@
           <input type="text" class="tag-raw-input" id="edit-tag-raw-input" placeholder="e.g. cable…">
         </div>
         <input type="hidden" id="edit-item-tags">
+        <button type="button" class="btn btn-ghost" id="edit-item-generate-tags-btn"
+                style="margin-top:0.5rem;" onclick="generateTags('edit-item')">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Tags
+        </button>
+        <div id="edit-item-tags-spinner" style="display:none;margin-top:0.5rem;color:var(--muted);font-size:0.8rem;">
+          <i class="fa-solid fa-spinner fa-spin"></i> Generating tags…
+        </div>
+        <div id="edit-item-tags-suggestions" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
       </div>
       <div class="form-group">
         <label class="form-label">
@@ -2024,6 +2063,8 @@
     renderTagChips();
     const ri = document.getElementById('tag-raw-input');
     if (ri) ri.value = '';
+    const suggestions = document.getElementById('item-tags-suggestions');
+    if (suggestions) suggestions.innerHTML = '';
   }
 
   // Delegate remove-chip clicks from the chips container
@@ -2047,6 +2088,51 @@
   document.getElementById('tags-wrapper').addEventListener('click', () => {
     document.getElementById('tag-raw-input').focus();
   });
+
+  // ── Generate Tags (AI suggestions) — shared by create + edit item forms ──
+  // prefix is 'item' for create, 'edit-item' for edit.
+  async function generateTags(prefix) {
+    const nameInput = document.getElementById(prefix === 'item' ? 'item-name' : 'edit-item-name');
+    const name = nameInput.value.trim();
+    if (!name) { showToast('Enter an item name first', 'error'); return; }
+
+    const btn         = document.getElementById(prefix + '-generate-tags-btn');
+    const spinner     = document.getElementById(prefix + '-tags-spinner');
+    const suggestions = document.getElementById(prefix + '-tags-suggestions');
+    const addFn       = prefix === 'item' ? addTagChip : addEditTagChip;
+
+    suggestions.innerHTML = '';
+    spinner.style.display = 'block';
+    btn.disabled = true;
+    try {
+      const r = await fetch(`/api/items/suggest-tags?name=${encodeURIComponent(name)}`);
+      if (r.ok) {
+        const data = await r.json();
+        const tags = data.tags || [];
+        if (!tags.length) {
+          suggestions.innerHTML = '<span style="color:var(--muted);font-size:0.8rem;">No suggestions found</span>';
+        } else {
+          suggestions.innerHTML = tags.map(t =>
+            `<button type="button" class="tag-suggestion" data-tag="${escHtml(t)}">${escHtml(t)}</button>`
+          ).join('');
+          suggestions.querySelectorAll('.tag-suggestion').forEach(chip => {
+            chip.addEventListener('click', () => {
+              addFn(chip.dataset.tag);
+              chip.disabled = true;
+              chip.classList.add('tag-suggestion-added');
+            });
+          });
+        }
+      } else {
+        showToast('Failed to generate tags', 'error');
+      }
+    } catch {
+      showToast('Network error', 'error');
+    } finally {
+      spinner.style.display = 'none';
+      btn.disabled = false;
+    }
+  }
 
   // ── View Toggle ──
   // containerId defaults to 'viewContainer'. Buttons scope to their container
@@ -2323,6 +2409,8 @@
         parsed.forEach(t => editTagsList.push(t));
       } catch {}
       renderEditTagChips();
+      const editSuggestions = document.getElementById('edit-item-tags-suggestions');
+      if (editSuggestions) editSuggestions.innerHTML = '';
       resetImgArea('edit-item-image', 'edit-item-image-area');
     }
     document.getElementById('editModal').classList.add('show');
