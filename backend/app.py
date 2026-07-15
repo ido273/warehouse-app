@@ -107,6 +107,28 @@ def _get_user_role_in_workspace():
     return None
 
 
+def _get_workspace_tag_language():
+    """Call auth-service /auth/me to get the active workspace's tag_language."""
+    auth_header = request.headers.get("Authorization")
+    ws_id = _get_workspace_id()
+    if not auth_header or not ws_id:
+        return "en"
+    try:
+        req = _urllib_request.Request(
+            f"{AUTH_SERVICE_URL}/auth/me",
+            headers={"Authorization": auth_header},
+            method="GET",
+        )
+        with _urllib_request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+        for w in (data.get("workspaces") or []):
+            if w.get("workspace_id") == ws_id:
+                return w.get("tag_language") or "en"
+    except Exception:
+        pass
+    return "en"
+
+
 def _check_role(*allowed_roles):
     """Return error response tuple if caller's role is not in allowed_roles, else None."""
     role = _get_user_role_in_workspace()
@@ -658,7 +680,7 @@ def suggest_tags():
     name = request.args.get("name", "").strip()
     if not name:
         abort(400, description="'name' query parameter is required")
-    language = request.args.get("language", "en")
+    language = _get_workspace_tag_language()
 
     return jsonify({"tags": fetch_ai_tags(name, language)})
 
