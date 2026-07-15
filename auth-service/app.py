@@ -87,7 +87,7 @@ class Workspace(db.Model):
     tag_language = db.Column(db.Enum("en", "he"), nullable=False, default="en")
     created_at   = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     members      = db.relationship("UserWorkspace", back_populates="workspace",
-                                  cascade="all, delete-orphan", lazy=True)
+                                   cascade="all, delete-orphan", lazy=True)
 
     def to_dict(self):
         return {
@@ -358,7 +358,7 @@ def create_workspace():
         return jsonify(error="Invalid tag_language"), 400
 
     workspace = Workspace(name=name, owner_id=user.id, invite_code=secrets.token_hex(4),
-                           tag_language=tag_language)
+                          tag_language=tag_language)
     db.session.add(workspace)
     db.session.flush()
 
