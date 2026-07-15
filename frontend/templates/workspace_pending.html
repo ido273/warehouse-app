@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ text_dir }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -110,9 +110,34 @@
       margin-top: 0.6rem;
     }
     .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    .lang-toggle {
+      position: fixed;
+      top: 1rem;
+      inset-inline-end: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .lang-toggle i { color: var(--muted); font-size: 0.78rem; }
+    .lang-toggle a { color: var(--muted); text-decoration: none; padding: 0.1rem 0.3rem; border-radius: 6px; }
+    .lang-toggle a.active { color: var(--accent); cursor: default; }
+    .lang-toggle a:not(.active):hover { color: var(--text); }
   </style>
 </head>
 <body>
+  <div class="lang-toggle">
+    <i class="fa-solid fa-globe"></i>
+    <a href="/set-language/en" class="{{ 'active' if lang == 'en' }}">EN</a>
+    /
+    <a href="/set-language/he" class="{{ 'active' if lang == 'he' }}">עב</a>
+  </div>
   <div class="wrap">
     <a href="/" class="logo">
       <i class="fa-solid fa-warehouse"></i> WarehouseMS
@@ -121,18 +146,18 @@
       <div class="icon-wrap">
         <i class="fa-solid fa-hourglass-half"></i>
       </div>
-      <h1>Request pending approval</h1>
-      <p>Your request to join the workspace has been sent. The workspace admin will review it shortly.</p>
+      <h1>{{ t.pending_title }}</h1>
+      <p>{{ t.pending_msg }}</p>
       <ul class="step-list">
-        <li><i class="fa-solid fa-check-circle"></i> Request submitted successfully</li>
-        <li><i class="fa-solid fa-clock"></i> Waiting for admin approval</li>
-        <li><i class="fa-solid fa-arrow-right-to-bracket"></i> You'll be added as a viewer once approved</li>
+        <li><i class="fa-solid fa-check-circle"></i> {{ t.pending_step1 }}</li>
+        <li><i class="fa-solid fa-clock"></i> {{ t.pending_step2 }}</li>
+        <li><i class="fa-solid fa-arrow-right-to-bracket"></i> {{ t.pending_step3 }}</li>
       </ul>
       <a href="/onboarding" class="btn btn-primary">
-        <i class="fa-solid fa-plus"></i> Join a different workspace
+        <i class="fa-solid fa-plus"></i> {{ t.join_different_workspace }}
       </a>
       <a href="/logout" class="btn btn-ghost">
-        <i class="fa-solid fa-right-from-bracket"></i> Sign out
+        <i class="fa-solid fa-right-from-bracket"></i> {{ t.sign_out_btn }}
       </a>
     </div>
   </div>

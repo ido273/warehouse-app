@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ text_dir }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -113,6 +113,28 @@
       box-shadow: 0 0 0 3px rgba(124,106,247,0.12);
     }
     .nav-search i { color: var(--muted); font-size: 0.82rem; }
+    .lang-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .lang-toggle i { color: var(--muted); font-size: 0.78rem; }
+    .lang-toggle a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.1rem 0.3rem;
+      border-radius: 6px;
+      transition: color 0.15s;
+    }
+    .lang-toggle a.active { color: var(--accent); cursor: default; }
+    .lang-toggle a:not(.active):hover { color: var(--text); }
     .nav-search input {
       background: none;
       border: none;
@@ -1146,6 +1168,34 @@
       /* FAB: tighter position */
       .fab { bottom: 1.1rem; right: 1.1rem; width: 48px; height: 48px; font-size: 1.2rem; }
     }
+
+    /* ── RTL (Hebrew) ──
+       Most layout is flexbox with `gap`/`space-between`, which mirrors
+       automatically once <html dir="rtl"> flips the flow direction. The
+       overrides below are only for elements using literal left/right
+       (position: absolute, border-left, etc.) that don't mirror on their own. */
+    html[dir="rtl"] .sidebar {
+      left: auto;
+      right: 0;
+      border-right: none;
+      border-left: 1px solid var(--border);
+      transform: translateX(100%);
+    }
+    html[dir="rtl"] .sidebar.open { transform: translateX(0); }
+    html[dir="rtl"] .toast {
+      right: auto;
+      left: 2rem;
+      transform: translateX(calc(-100% - 2.5rem));
+    }
+    html[dir="rtl"] .toast.show { transform: translateX(0); }
+    html[dir="rtl"] .toast.success { border-left: none; border-right: 4px solid #4CAF50; }
+    html[dir="rtl"] .toast.error   { border-left: none; border-right: 4px solid #ef5350; }
+    html[dir="rtl"] .fab { right: auto; left: 2rem; }
+    html[dir="rtl"] .card-menu-btn { right: auto; left: 0.55rem; }
+    html[dir="rtl"] .lightbox-close { right: auto; left: 1.25rem; }
+    @media (max-width: 640px) {
+      html[dir="rtl"] .fab { right: auto; left: 1.1rem; }
+    }
   </style>
 </head>
 <body>
@@ -1178,9 +1228,15 @@
   {% endif %}
   <form class="nav-search" action="/search" method="get" role="search">
     <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="text" name="q" placeholder="Quick search…"
+    <input type="text" name="q" placeholder="{{ t.quick_search_placeholder }}"
            value="{{ request.args.get('q', '') }}" autocomplete="off">
   </form>
+  <div class="lang-toggle">
+    <i class="fa-solid fa-globe"></i>
+    <a href="/set-language/en" class="{{ 'active' if lang == 'en' }}">EN</a>
+    /
+    <a href="/set-language/he" class="{{ 'active' if lang == 'he' }}">עב</a>
+  </div>
 </nav>
 
 <!-- OVERLAY -->
@@ -1189,22 +1245,22 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar" aria-label="Sidebar navigation">
   <div style="padding: 0.25rem 0 0.5rem;">
-    <div class="sidebar-label">Navigation</div>
+    <div class="sidebar-label">{{ t.nav_navigation }}</div>
     <a href="/" class="sidebar-link {% if request.path == '/' %}active{% endif %}">
-      <i class="fa-solid fa-house"></i> Home
+      <i class="fa-solid fa-house"></i> {{ t.nav_home }}
     </a>
     <a href="/items" class="sidebar-link {% if request.path == '/items' %}active{% endif %}">
-      <i class="fa-solid fa-cubes"></i> All Items
+      <i class="fa-solid fa-cubes"></i> {{ t.nav_all_items }}
     </a>
     <a href="/search" class="sidebar-link {% if request.path == '/search' %}active{% endif %}">
-      <i class="fa-solid fa-magnifying-glass"></i> Search
+      <i class="fa-solid fa-magnifying-glass"></i> {{ t.nav_search }}
     </a>
   </div>
 
   {% if locations %}
   <hr class="sidebar-divider">
   <div>
-    <div class="sidebar-label">Storage Locations</div>
+    <div class="sidebar-label">{{ t.nav_storage_locations }}</div>
     {% for loc in locations %}
     <a href="/search?q={{ loc | urlencode }}" class="sidebar-link">
       <i class="fa-solid fa-location-dot"></i>
@@ -1216,7 +1272,7 @@
 
   <hr class="sidebar-divider">
   <div>
-    <div class="sidebar-label">Workspace</div>
+    <div class="sidebar-label">{{ t.nav_workspace }}</div>
     <div class="sidebar-link" style="cursor:default;gap:0.55rem;">
       <i class="fa-solid fa-building" style="color:var(--accent);"></i>
       <span style="overflow:hidden;text-overflow:ellipsis;font-weight:600;">{{ active_workspace_name }}</span>
@@ -1233,11 +1289,11 @@
     {% endfor %}
     {% endif %}
     <a href="/onboarding" class="sidebar-link" style="font-size:0.82rem;">
-      <i class="fa-solid fa-plus"></i> New / Join Workspace
+      <i class="fa-solid fa-plus"></i> {{ t.nav_new_join_workspace }}
     </a>
     {% if active_workspace_role == 'admin' and active_workspace_invite %}
     <div style="padding:0.45rem 1.25rem 0.6rem;">
-      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem;">Invite Code</div>
+      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem;">{{ t.nav_invite_code }}</div>
       <div style="display:flex;align-items:center;gap:0.5rem;">
         <code id="sidebar-invite-code" style="font-size:0.9rem;font-weight:800;color:var(--accent);letter-spacing:0.18em;font-family:monospace;">{{ active_workspace_invite }}</code>
         <button onclick="copySidebarInviteCode()" title="Copy invite code"
@@ -1254,16 +1310,16 @@
   {% if active_workspace_role == 'admin' %}
   <hr class="sidebar-divider">
   <div>
-    <div class="sidebar-label">Admin</div>
+    <div class="sidebar-label">{{ t.nav_admin }}</div>
     <a href="#" class="sidebar-link" onclick="openManageLocationsModal(); closeSidebar(); return false;">
-      <i class="fa-solid fa-map-pin"></i> Manage Locations
+      <i class="fa-solid fa-map-pin"></i> {{ t.nav_manage_locations }}
     </a>
     <a href="#" class="sidebar-link" onclick="openPendingRequestsModal(); closeSidebar(); return false;" style="justify-content:space-between;">
-      <span><i class="fa-solid fa-clock"></i> Pending Requests</span>
+      <span><i class="fa-solid fa-clock"></i> {{ t.nav_pending_requests }}</span>
       <span id="sidebar-pending-count" style="display:none;background:#ef5350;color:white;border-radius:999px;padding:0.1rem 0.45rem;font-size:0.65rem;font-weight:800;margin-left:0.35rem;"></span>
     </a>
     <a href="#" class="sidebar-link" onclick="openSettingsModal(); closeSidebar(); return false;">
-      <i class="fa-solid fa-gear"></i> Settings
+      <i class="fa-solid fa-gear"></i> {{ t.nav_settings }}
     </a>
   </div>
   {% endif %}
@@ -1271,19 +1327,19 @@
   {% if active_workspace_role %}
   <hr class="sidebar-divider">
   <div>
-    <div class="sidebar-label">Export</div>
+    <div class="sidebar-label">{{ t.nav_export }}</div>
     <a href="/api/export/csv" class="sidebar-link">
-      <i class="fa-solid fa-file-csv"></i> Export CSV
+      <i class="fa-solid fa-file-csv"></i> {{ t.nav_export_csv }}
     </a>
     <a href="/api/export/excel" class="sidebar-link">
-      <i class="fa-solid fa-file-excel"></i> Export Excel
+      <i class="fa-solid fa-file-excel"></i> {{ t.nav_export_excel }}
     </a>
   </div>
   {% endif %}
 
   <hr class="sidebar-divider">
   <div>
-    <div class="sidebar-label">Account</div>
+    <div class="sidebar-label">{{ t.nav_account }}</div>
     {% if current_user %}
     <div class="sidebar-link" style="cursor:default;opacity:0.7;">
       <i class="fa-solid fa-circle-user"></i>
@@ -1291,7 +1347,7 @@
     </div>
     {% endif %}
     <a href="/logout" class="sidebar-link" style="color:#ef9a9a;">
-      <i class="fa-solid fa-right-from-bracket" style="color:#ef9a9a;"></i> Sign Out
+      <i class="fa-solid fa-right-from-bracket" style="color:#ef9a9a;"></i> {{ t.nav_sign_out }}
     </a>
   </div>
 </aside>
@@ -1316,7 +1372,7 @@
     <div class="modal-header">
       <span class="modal-title">
         <i class="fa-solid fa-plus" style="color:var(--accent);margin-right:0.3rem;"></i>
-        Add New
+        {{ t.add_new }}
       </span>
       <button class="modal-close" onclick="closeAddModal()" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
@@ -1325,49 +1381,49 @@
 
     <div class="tabs">
       <button class="tab-btn active" id="tab-box-btn" onclick="switchTab('box')">
-        <i class="fa-solid fa-box"></i> Box
+        <i class="fa-solid fa-box"></i> {{ t.tab_box }}
       </button>
       <button class="tab-btn" id="tab-item-btn" onclick="switchTab('item')">
-        <i class="fa-solid fa-cube"></i> Item
+        <i class="fa-solid fa-cube"></i> {{ t.tab_item }}
       </button>
     </div>
 
     <!-- Box form -->
     <div id="tab-box-form">
       <div class="form-group">
-        <label class="form-label" for="box-name">Box Name *</label>
-        <input class="form-input" type="text" id="box-name" placeholder="e.g. Electronics Box" autocomplete="off">
+        <label class="form-label" for="box-name">{{ t.box_name_label }}</label>
+        <input class="form-input" type="text" id="box-name" placeholder="{{ t.box_name_placeholder }}" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label">Location</label>
+        <label class="form-label">{{ t.location_label }}</label>
         <select class="form-input" id="box-location-select" onchange="onLocSelectChange('box-location')">
-          <option value="">No location</option>
+          <option value="">{{ t.no_location }}</option>
         </select>
-        <input class="form-input" type="text" id="box-location-custom" placeholder="New location name…"
+        <input class="form-input" type="text" id="box-location-custom" placeholder="{{ t.new_location_placeholder }}"
                style="display:none;margin-top:0.35rem;" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label">Visibility</label>
+        <label class="form-label">{{ t.visibility_label }}</label>
         <button type="button" id="box-is-public-btn" data-public="false" onclick="toggleBoxPublicDraft()"
                 style="cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.55rem 0.75rem;font-size:0.85rem;color:var(--text);width:100%;">
-          🔒 Private
+          {{ t.private }}
         </button>
       </div>
       <div class="form-group">
         <label class="form-label">
-          Image
-          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+          {{ t.image_label }}
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">{{ t.optional }}</span>
         </label>
         <label class="img-upload-label" for="box-image">
           <div class="img-upload-area" id="box-image-area">
-            <i class="fa-solid fa-image"></i><span>Click to upload a photo</span>
+            <i class="fa-solid fa-image"></i><span>{{ t.click_to_upload }}</span>
           </div>
           <input type="file" id="box-image" accept="image/jpeg,image/png,image/gif,image/webp"
                  style="display:none;" onchange="previewImg(this,'box-image-area')">
         </label>
       </div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="createBox()">
-        <i class="fa-solid fa-box"></i> Create Box
+        <i class="fa-solid fa-box"></i> {{ t.create_box_btn }}
       </button>
     </div>
 
@@ -1377,60 +1433,60 @@
       <!-- Fields (hidden after successful create) -->
       <div id="item-fields">
         <div class="form-group">
-          <label class="form-label" for="item-name">Item Name *</label>
-          <input class="form-input" type="text" id="item-name" placeholder="e.g. USB Cable" autocomplete="off">
+          <label class="form-label" for="item-name">{{ t.item_name_label }}</label>
+          <input class="form-input" type="text" id="item-name" placeholder="{{ t.item_name_placeholder }}" autocomplete="off">
         </div>
         <div class="form-group">
-          <label class="form-label" for="item-category">Category</label>
-          <input class="form-input" type="text" id="item-category" placeholder="e.g. Electronics" autocomplete="off">
+          <label class="form-label" for="item-category">{{ t.category_label }}</label>
+          <input class="form-input" type="text" id="item-category" placeholder="{{ t.category_placeholder }}" autocomplete="off">
         </div>
         <div class="form-group">
-          <label class="form-label" for="item-quantity">Quantity</label>
+          <label class="form-label" for="item-quantity">{{ t.quantity_label }}</label>
           <input class="form-input" type="number" id="item-quantity" min="1" value="1" style="width:120px;">
         </div>
         <div class="form-group">
-          <label class="form-label">Location</label>
+          <label class="form-label">{{ t.location_label }}</label>
           <select class="form-input" id="item-location-select" onchange="onLocSelectChange('item-location')">
-            <option value="">No location</option>
+            <option value="">{{ t.no_location }}</option>
           </select>
-          <input class="form-input" type="text" id="item-location-custom" placeholder="New location name…"
+          <input class="form-input" type="text" id="item-location-custom" placeholder="{{ t.new_location_placeholder }}"
                  style="display:none;margin-top:0.35rem;" autocomplete="off">
           <input class="form-input location-from-box" type="text" id="item-location-box"
-                 readonly style="display:none;margin-top:0.35rem;" placeholder="Inherited from box">
+                 readonly style="display:none;margin-top:0.35rem;" placeholder="{{ t.inherited_from_box }}">
         </div>
         <div class="form-group">
-          <label class="form-label" for="item-box-select">Box</label>
+          <label class="form-label" for="item-box-select">{{ t.box_label }}</label>
           <select class="form-input" id="item-box-select">
-            <option value="">— No Box —</option>
+            <option value="">{{ t.no_box_option }}</option>
             {% for box in all_boxes %}
             <option value="{{ box.id }}">{{ box.name }} ({{ box.code }})</option>
             {% endfor %}
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Tags <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(press Enter to add)</span></label>
+          <label class="form-label">{{ t.tags_label }} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">{{ t.tags_hint }}</span></label>
           <div class="tags-input-wrapper" id="tags-wrapper">
             <div id="tags-chips" style="display:contents;"></div>
-            <input type="text" class="tag-raw-input" id="tag-raw-input" placeholder="e.g. cable…">
+            <input type="text" class="tag-raw-input" id="tag-raw-input" placeholder="{{ t.tag_placeholder }}">
           </div>
           <input type="hidden" id="item-tags">
           <button type="button" class="btn btn-ghost" id="item-generate-tags-btn"
                   style="margin-top:0.5rem;" onclick="generateTags('item')">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Tags
+            <i class="fa-solid fa-wand-magic-sparkles"></i> {{ t.generate_tags_btn }}
           </button>
           <div id="item-tags-spinner" style="display:none;margin-top:0.5rem;color:var(--muted);font-size:0.8rem;">
-            <i class="fa-solid fa-spinner fa-spin"></i> Generating tags…
+            <i class="fa-solid fa-spinner fa-spin"></i> {{ t.generating_tags }}
           </div>
           <div id="item-tags-suggestions" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
         </div>
         <div class="form-group">
           <label class="form-label">
-            Image
-            <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+            {{ t.image_label }}
+            <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">{{ t.optional }}</span>
           </label>
           <label class="img-upload-label" for="item-image">
             <div class="img-upload-area" id="item-image-area">
-              <i class="fa-solid fa-image"></i><span>Click to upload a photo</span>
+              <i class="fa-solid fa-image"></i><span>{{ t.click_to_upload }}</span>
             </div>
             <input type="file" id="item-image" accept="image/jpeg,image/png,image/gif,image/webp"
                    style="display:none;" onchange="previewImg(this,'item-image-area')">
@@ -1438,10 +1494,10 @@
         </div>
         <div style="display:flex;gap:0.5rem;margin-top:0.25rem;">
           <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="createItem()">
-            <i class="fa-solid fa-cube"></i> Create Item
+            <i class="fa-solid fa-cube"></i> {{ t.create_item_btn }}
           </button>
           <button class="btn btn-ghost" onclick="skipItemForm()" title="Skip without adding an item">
-            Skip
+            {{ t.skip_btn }}
           </button>
         </div>
       </div>
@@ -1450,14 +1506,14 @@
       <div id="item-confirm" style="display:none;">
         <div class="item-confirm-panel">
           <div class="item-confirm-icon"><i class="fa-solid fa-circle-check"></i></div>
-          <div class="item-confirm-title">Item added!</div>
-          <div class="item-confirm-sub">Add another item to this box?</div>
+          <div class="item-confirm-title">{{ t.item_added }}</div>
+          <div class="item-confirm-sub">{{ t.add_another_question }}</div>
           <div class="item-confirm-actions">
             <button class="btn btn-primary" onclick="addAnotherItem()">
-              <i class="fa-solid fa-plus"></i> Add Another
+              <i class="fa-solid fa-plus"></i> {{ t.add_another_btn }}
             </button>
             <button class="btn btn-ghost" onclick="doneAddingItems()">
-              <i class="fa-solid fa-check"></i> Done
+              <i class="fa-solid fa-check"></i> {{ t.done_btn }}
             </button>
           </div>
         </div>
@@ -1477,9 +1533,9 @@
 
 <!-- CARD DROPDOWN (shared, repositioned by JS) -->
 <div class="card-dropdown" id="cardDropdown">
-  <button onclick="openEditModal()"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+  <button onclick="openEditModal()"><i class="fa-solid fa-pen-to-square"></i> {{ t.edit_action }}</button>
   <hr class="card-dropdown-divider">
-  <button class="danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Delete</button>
+  <button class="danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> {{ t.delete_action }}</button>
 </div>
 
 <!-- EDIT MODAL -->
@@ -1488,7 +1544,7 @@
     <div class="modal-header">
       <span class="modal-title" id="edit-modal-title">
         <i class="fa-solid fa-pen-to-square" style="color:var(--accent);margin-right:0.3rem;"></i>
-        Edit
+        {{ t.edit_title }}
       </span>
       <button class="modal-close" onclick="closeEditModal()" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
@@ -1498,106 +1554,106 @@
     <!-- Edit Box form -->
     <div id="edit-box-form">
       <div class="form-group">
-        <label class="form-label" for="edit-box-name">Box Name *</label>
-        <input class="form-input" type="text" id="edit-box-name" placeholder="e.g. Electronics Box" autocomplete="off">
+        <label class="form-label" for="edit-box-name">{{ t.box_name_label }}</label>
+        <input class="form-input" type="text" id="edit-box-name" placeholder="{{ t.box_name_placeholder }}" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label">Location</label>
+        <label class="form-label">{{ t.location_label }}</label>
         <select class="form-input" id="edit-box-location-select" onchange="onLocSelectChange('edit-box-location')">
-          <option value="">No location</option>
+          <option value="">{{ t.no_location }}</option>
         </select>
-        <input class="form-input" type="text" id="edit-box-location-custom" placeholder="New location name…"
+        <input class="form-input" type="text" id="edit-box-location-custom" placeholder="{{ t.new_location_placeholder }}"
                style="display:none;margin-top:0.35rem;" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label">Visibility</label>
+        <label class="form-label">{{ t.visibility_label }}</label>
         <button type="button" id="edit-box-is-public-btn" data-public="false" onclick="toggleEditBoxVisibility()"
                 style="cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.55rem 0.75rem;font-size:0.85rem;color:var(--text);width:100%;">
-          🔒 Private
+          {{ t.private }}
         </button>
       </div>
       <div class="form-group">
         <label class="form-label">
-          Replace Image
-          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+          {{ t.replace_image_label }}
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">{{ t.optional }}</span>
         </label>
         <label class="img-upload-label" for="edit-box-image">
           <div class="img-upload-area" id="edit-box-image-area">
-            <i class="fa-solid fa-image"></i><span>Click to upload a new photo</span>
+            <i class="fa-solid fa-image"></i><span>{{ t.click_to_upload }}</span>
           </div>
           <input type="file" id="edit-box-image" accept="image/jpeg,image/png,image/gif,image/webp"
                  style="display:none;" onchange="previewImg(this,'edit-box-image-area')">
         </label>
       </div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveEdit()">
-        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+        <i class="fa-solid fa-floppy-disk"></i> {{ t.save_changes_btn }}
       </button>
     </div>
 
     <!-- Edit Item form -->
     <div id="edit-item-form" style="display:none;">
       <div class="form-group">
-        <label class="form-label" for="edit-item-name">Item Name *</label>
-        <input class="form-input" type="text" id="edit-item-name" placeholder="e.g. USB Cable" autocomplete="off">
+        <label class="form-label" for="edit-item-name">{{ t.item_name_label }}</label>
+        <input class="form-input" type="text" id="edit-item-name" placeholder="{{ t.item_name_placeholder }}" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label" for="edit-item-category">Category</label>
-        <input class="form-input" type="text" id="edit-item-category" placeholder="e.g. Electronics" autocomplete="off">
+        <label class="form-label" for="edit-item-category">{{ t.category_label }}</label>
+        <input class="form-input" type="text" id="edit-item-category" placeholder="{{ t.category_placeholder }}" autocomplete="off">
       </div>
       <div class="form-group">
-        <label class="form-label" for="edit-item-quantity">Quantity</label>
+        <label class="form-label" for="edit-item-quantity">{{ t.quantity_label }}</label>
         <input class="form-input" type="number" id="edit-item-quantity" min="1" value="1" style="width:120px;">
       </div>
       <div class="form-group">
-        <label class="form-label">Location</label>
+        <label class="form-label">{{ t.location_label }}</label>
         <select class="form-input" id="edit-item-location-select" onchange="onLocSelectChange('edit-item-location')">
-          <option value="">No location</option>
+          <option value="">{{ t.no_location }}</option>
         </select>
-        <input class="form-input" type="text" id="edit-item-location-custom" placeholder="New location name…"
+        <input class="form-input" type="text" id="edit-item-location-custom" placeholder="{{ t.new_location_placeholder }}"
                style="display:none;margin-top:0.35rem;" autocomplete="off">
         <input class="form-input location-from-box" type="text" id="edit-item-location-box"
-               readonly style="display:none;margin-top:0.35rem;" placeholder="Inherited from box">
+               readonly style="display:none;margin-top:0.35rem;" placeholder="{{ t.inherited_from_box }}">
       </div>
       <div class="form-group">
-        <label class="form-label" for="edit-item-box-select">Box</label>
+        <label class="form-label" for="edit-item-box-select">{{ t.box_label }}</label>
         <select class="form-input" id="edit-item-box-select">
-          <option value="">— No Box —</option>
+          <option value="">{{ t.no_box_option }}</option>
           {% for box in all_boxes %}
           <option value="{{ box.id }}">{{ box.name }} ({{ box.code }})</option>
           {% endfor %}
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Tags <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(press Enter to add)</span></label>
+        <label class="form-label">{{ t.tags_label }} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">{{ t.tags_hint }}</span></label>
         <div class="tags-input-wrapper" id="edit-tags-wrapper">
           <div id="edit-tags-chips" style="display:contents;"></div>
-          <input type="text" class="tag-raw-input" id="edit-tag-raw-input" placeholder="e.g. cable…">
+          <input type="text" class="tag-raw-input" id="edit-tag-raw-input" placeholder="{{ t.tag_placeholder }}">
         </div>
         <input type="hidden" id="edit-item-tags">
         <button type="button" class="btn btn-ghost" id="edit-item-generate-tags-btn"
                 style="margin-top:0.5rem;" onclick="generateTags('edit-item')">
-          <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Tags
+          <i class="fa-solid fa-wand-magic-sparkles"></i> {{ t.generate_tags_btn }}
         </button>
         <div id="edit-item-tags-spinner" style="display:none;margin-top:0.5rem;color:var(--muted);font-size:0.8rem;">
-          <i class="fa-solid fa-spinner fa-spin"></i> Generating tags…
+          <i class="fa-solid fa-spinner fa-spin"></i> {{ t.generating_tags }}
         </div>
         <div id="edit-item-tags-suggestions" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
       </div>
       <div class="form-group">
         <label class="form-label">
-          Replace Image
-          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">(optional)</span>
+          {{ t.replace_image_label }}
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">{{ t.optional }}</span>
         </label>
         <label class="img-upload-label" for="edit-item-image">
           <div class="img-upload-area" id="edit-item-image-area">
-            <i class="fa-solid fa-image"></i><span>Click to upload a new photo</span>
+            <i class="fa-solid fa-image"></i><span>{{ t.click_to_upload }}</span>
           </div>
           <input type="file" id="edit-item-image" accept="image/jpeg,image/png,image/gif,image/webp"
                  style="display:none;" onchange="previewImg(this,'edit-item-image-area')">
         </label>
       </div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveEdit()">
-        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+        <i class="fa-solid fa-floppy-disk"></i> {{ t.save_changes_btn }}
       </button>
     </div>
   </div>
@@ -1696,6 +1752,8 @@
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
 <script>
+  const T = {{ t | tojson }};
+
   // ── Sidebar ──
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
@@ -1846,7 +1904,7 @@
       } else {
         showToast('Failed to update visibility', 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
     finally { btn.disabled = false; }
   }
 
@@ -1911,7 +1969,7 @@
     const boxLoc    = getLocValue('box-location');
     const boxLocSel = document.getElementById('box-location-select');
     const imgInput  = document.getElementById('box-image');
-    if (!name) { showToast('Box name is required', 'error'); return; }
+    if (!name) { showToast(T.box_name_required, 'error'); return; }
     if (boxLocSel && boxLocSel.style.display === 'none') {
       await ensureLocationCreated(boxLoc);
     }
@@ -1930,7 +1988,7 @@
           await uploadEntityImage('boxes', newBox.id, imgInput.files[0]);
         }
         needsReload = true;
-        showToast('Box created — now add items to it!');
+        showToast(T.box_created_msg);
         const sel = document.getElementById('item-box-select');
         const opt = new Option(`${newBox.name} (${newBox.code})`, newBox.id);
         sel.add(opt);
@@ -1952,9 +2010,9 @@
         document.getElementById('item-name').focus();
       } else {
         const err = await r.json().catch(() => ({}));
-        showToast(err.error || 'Failed to create box', 'error');
+        showToast(err.error || T.failed_to_create_box, 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   // ── Create Item ──
@@ -1966,7 +2024,7 @@
     const boxId      = document.getElementById('item-box-select').value;
     const imgInput   = document.getElementById('item-image');
     const tags       = [...tagsList];
-    if (!name) { showToast('Item name is required', 'error'); return; }
+    if (!name) { showToast(T.item_name_required, 'error'); return; }
     if (itemLocSel && itemLocSel.style.display === 'none') {
       await ensureLocationCreated(itemLoc);
     }
@@ -1993,9 +2051,9 @@
         document.getElementById('item-confirm').style.display = 'block';
       } else {
         const err = await r.json().catch(() => ({}));
-        showToast(err.error || 'Failed to create item', 'error');
+        showToast(err.error || T.failed_to_create_item, 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   // Called from confirmation panel: reset item form, keep box selected
@@ -2094,7 +2152,7 @@
   async function generateTags(prefix) {
     const nameInput = document.getElementById(prefix === 'item' ? 'item-name' : 'edit-item-name');
     const name = nameInput.value.trim();
-    if (!name) { showToast('Enter an item name first', 'error'); return; }
+    if (!name) { showToast(T.enter_item_name_first, 'error'); return; }
 
     const btn         = document.getElementById(prefix + '-generate-tags-btn');
     const spinner     = document.getElementById(prefix + '-tags-spinner');
@@ -2110,7 +2168,7 @@
         const data = await r.json();
         const tags = data.tags || [];
         if (!tags.length) {
-          suggestions.innerHTML = '<span style="color:var(--muted);font-size:0.8rem;">No suggestions found</span>';
+          suggestions.innerHTML = `<span style="color:var(--muted);font-size:0.8rem;">${escHtml(T.no_suggestions_found)}</span>`;
         } else {
           suggestions.innerHTML = tags.map(t =>
             `<button type="button" class="tag-suggestion" data-tag="${escHtml(t)}">${escHtml(t)}</button>`
@@ -2124,10 +2182,10 @@
           });
         }
       } else {
-        showToast('Failed to generate tags', 'error');
+        showToast(T.failed_to_generate_tags, 'error');
       }
     } catch {
-      showToast('Network error', 'error');
+      showToast(T.network_error, 'error');
     } finally {
       spinner.style.display = 'none';
       btn.disabled = false;
@@ -2435,7 +2493,7 @@
         location: locVal,
       };
       imgInput = document.getElementById('edit-box-image');
-      if (!payload.name) { showToast('Box name is required', 'error'); return; }
+      if (!payload.name) { showToast(T.box_name_required, 'error'); return; }
     } else {
       const boxId     = document.getElementById('edit-item-box-select').value;
       const locVal    = getLocValue('edit-item-location');
@@ -2450,7 +2508,7 @@
         tags:     [...editTagsList],
       };
       imgInput = document.getElementById('edit-item-image');
-      if (!payload.name) { showToast('Item name is required', 'error'); return; }
+      if (!payload.name) { showToast(T.item_name_required, 'error'); return; }
     }
 
     try {
@@ -2465,14 +2523,14 @@
           const entityType = isBox ? 'boxes' : 'items';
           await uploadEntityImage(entityType, id, imgInput.files[0]);
         }
-        showToast(`${isBox ? 'Box' : 'Item'} updated!`);
+        showToast(isBox ? T.box_updated : T.item_updated);
         closeEditModal();
         setTimeout(() => window.location.reload(), 900);
       } else {
         const err = await r.json().catch(() => ({}));
-        showToast(err.error || 'Update failed', 'error');
+        showToast(err.error || T.update_failed, 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   // ── Invite code copy ──
@@ -2573,7 +2631,7 @@
         const err = await r.json().catch(() => ({}));
         showToast(err.error || 'Failed to add location', 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   async function confirmDeleteLocation(locId, locName, boxCount, itemCount) {
@@ -2602,7 +2660,7 @@
       showToast(`Location "${locName}" deleted`);
       needsReload = true;
       await loadLocations();
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -2646,7 +2704,7 @@
         const err = await r.json().catch(() => ({}));
         showToast(err.error || 'Failed to save', 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   async function regenerateInviteCode() {
@@ -2663,7 +2721,7 @@
       } else {
         showToast('Failed to regenerate', 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   async function loadSettingsMembers() {
@@ -2711,7 +2769,7 @@
         showToast('Failed to update role', 'error');
         await loadSettingsMembers();
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   // ── Pending Requests Modal ──
@@ -2787,7 +2845,7 @@
       } else {
         showToast('Failed to update request', 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 
   // ── Pending requests badge (admin only) ──
@@ -2938,19 +2996,21 @@
     activeMenuBtn = null;
     const d     = menuData;
     const isBox = d.type === 'box';
-    const label = isBox ? `box "${d.name}"` : `item "${d.name}"`;
-    if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+    const confirmMsg = T.delete_confirm
+      .replace('{type}', isBox ? T.box_word : T.item_word)
+      .replace('{name}', d.name);
+    if (!confirm(confirmMsg)) return;
     try {
       const endpoint = isBox ? `/api/boxes/${d.id}` : `/api/items/${d.id}`;
       const r = await fetch(endpoint, { method: 'DELETE' });
       if (r.ok || r.status === 204) {
-        showToast(`${isBox ? 'Box' : 'Item'} deleted`);
+        showToast(isBox ? T.box_deleted : T.item_deleted);
         setTimeout(() => window.location.reload(), 900);
       } else {
         const err = await r.json().catch(() => ({}));
-        showToast(err.error || 'Delete failed', 'error');
+        showToast(err.error || T.delete_failed, 'error');
       }
-    } catch { showToast('Network error', 'error'); }
+    } catch { showToast(T.network_error, 'error'); }
   }
 </script>
 

@@ -11,6 +11,8 @@ from flask import (
     session, redirect, url_for,
 )
 
+from translations import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, get_translations
+
 app = Flask(__name__)
 # SECRET_KEY signs the session cookie (which holds the JWT). It must be a
 # strong random value supplied at runtime — never a committed default, or the
@@ -75,6 +77,7 @@ def inject_user():
     workspaces   = session.get("workspaces") or []
     active_ws_id = session.get("active_workspace_id")
     active_ws    = next((w for w in workspaces if w["workspace_id"] == active_ws_id), None)
+    lang = session.get("lang", DEFAULT_LANGUAGE)
     return {
         "current_user":             session.get("user"),
         "workspaces":               workspaces,
@@ -82,7 +85,18 @@ def inject_user():
         "active_workspace_name":    (active_ws["workspace_name"] if active_ws else None) or "No workspace",
         "active_workspace_role":    active_ws["role"] if active_ws else None,
         "active_workspace_invite":  active_ws.get("invite_code") if active_ws else None,
+        "lang":                     lang,
+        "t":                        get_translations(lang),
+        "text_dir":                 "rtl" if lang == "he" else "ltr",
     }
+
+
+@app.route("/set-language/<lang>")
+def set_language(lang):
+    if lang in SUPPORTED_LANGUAGES:
+        session["lang"] = lang
+    dest = request.referrer or url_for("index")
+    return redirect(dest)
 
 
 def _auth_headers():

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ text_dir }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -164,9 +164,34 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(124,106,247,0.25); border-radius: 3px; }
+
+    .lang-toggle {
+      position: fixed;
+      top: 1rem;
+      inset-inline-end: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .lang-toggle i { color: var(--muted); font-size: 0.78rem; }
+    .lang-toggle a { color: var(--muted); text-decoration: none; padding: 0.1rem 0.3rem; border-radius: 6px; }
+    .lang-toggle a.active { color: var(--accent); cursor: default; }
+    .lang-toggle a:not(.active):hover { color: var(--text); }
   </style>
 </head>
 <body>
+  <div class="lang-toggle">
+    <i class="fa-solid fa-globe"></i>
+    <a href="/set-language/en" class="{{ 'active' if lang == 'en' }}">EN</a>
+    /
+    <a href="/set-language/he" class="{{ 'active' if lang == 'he' }}">עב</a>
+  </div>
   <div class="auth-wrap">
     <a href="/" class="auth-logo">
       <i class="fa-solid fa-warehouse"></i>
@@ -174,8 +199,8 @@
     </a>
 
     <div class="auth-card">
-      <div class="auth-title">Create an account</div>
-      <div class="auth-sub">Join WarehouseMS to manage your inventory</div>
+      <div class="auth-title">{{ t.create_account_title }}</div>
+      <div class="auth-sub">{{ t.join_warehousems_sub }}</div>
 
       {% if error %}
       <div class="alert">
@@ -187,7 +212,7 @@
       <form method="post" action="/register">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
           <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label" for="first_name">First Name</label>
+            <label class="form-label" for="first_name">{{ t.first_name_label }}</label>
             <div class="form-input-wrap">
               <i class="fa-solid fa-user"></i>
               <input class="form-input" type="text" id="first_name" name="first_name"
@@ -195,7 +220,7 @@
             </div>
           </div>
           <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label" for="last_name">Last Name</label>
+            <label class="form-label" for="last_name">{{ t.last_name_label }}</label>
             <div class="form-input-wrap">
               <i class="fa-solid fa-user"></i>
               <input class="form-input" type="text" id="last_name" name="last_name"
@@ -204,7 +229,7 @@
           </div>
         </div>
         <div class="form-group" style="margin-top:1rem;">
-          <label class="form-label" for="email">Email</label>
+          <label class="form-label" for="email">{{ t.email_label }}</label>
           <div class="form-input-wrap">
             <i class="fa-solid fa-envelope"></i>
             <input class="form-input" type="email" id="email" name="email"
@@ -212,24 +237,24 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label" for="password">Password</label>
+          <label class="form-label" for="password">{{ t.password_label }}</label>
           <div class="form-input-wrap">
             <i class="fa-solid fa-lock"></i>
             <input class="form-input" type="password" id="password" name="password"
                    placeholder="••••••••" required autocomplete="new-password" minlength="6">
           </div>
-          <div class="hint">At least 6 characters</div>
+          <div class="hint">{{ t.password_hint }}</div>
         </div>
         <button class="btn-submit" type="submit">
           <i class="fa-solid fa-user-plus"></i>
-          Create Account
+          {{ t.create_account_btn }}
         </button>
       </form>
     </div>
 
     <div class="auth-footer">
-      Already have an account?
-      <a href="/login">Sign in</a>
+      {{ t.have_account_msg }}
+      <a href="/login">{{ t.sign_in_link }}</a>
     </div>
   </div>
 </body>
