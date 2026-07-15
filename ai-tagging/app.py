@@ -21,15 +21,24 @@ MOCK_TAGS = [
     "gadget", "tech", "wire", "component", "device",
 ]
 
+LANGUAGE_INSTRUCTIONS = {
+    "en": "Generate 10 tags in English.",
+    "he": (
+        "Generate 10 tags. Use Hebrew for descriptive words. Keep technical "
+        "terms, brand names, and international acronyms in English "
+        "(e.g. USB, WiFi, HDMI, CPU, LED)."
+    ),
+}
+
 TAGGING_PROMPT = """You are a warehouse inventory tagging system.
-Given an item named '{name}' and its image,
-return at least 10 short relevant tags in JSON format, in {language} language.
+Given an item named '{name}' and its image, return the tags in JSON format.
+{language_instruction}
 Example: ["cable", "usb", "charging", "electronics", "phone", "accessory", "peripheral", "gadget", "tech", "wire"]
 Return ONLY the JSON array, nothing else."""
 
 TEXT_ONLY_PROMPT = """You are a warehouse inventory tagging system.
-Given an item named '{name}' (no image available),
-return at least 10 short relevant tags in JSON format, in {language} language.
+Given an item named '{name}' (no image available), return the tags in JSON format.
+{language_instruction}
 Example: ["cable", "usb", "charging", "electronics", "phone", "accessory", "peripheral", "gadget", "tech", "wire"]
 Return ONLY the JSON array, nothing else."""
 
@@ -66,6 +75,7 @@ def _invoke_bedrock(content):
 
 def generate_tags(name, image_url, language="en"):
     try:
+        language_instruction = LANGUAGE_INSTRUCTIONS.get(language, LANGUAGE_INSTRUCTIONS["en"])
         if image_url:
             image_b64, media_type = _fetch_image(image_url)
             image_format = media_type.split("/")[-1]
@@ -76,10 +86,10 @@ def generate_tags(name, image_url, language="en"):
                         "source": {"bytes": image_b64},
                     }
                 },
-                {"text": TAGGING_PROMPT.format(name=name, language=language)},
+                {"text": TAGGING_PROMPT.format(name=name, language_instruction=language_instruction)},
             ]
         else:
-            content = [{"text": TEXT_ONLY_PROMPT.format(name=name, language=language)}]
+            content = [{"text": TEXT_ONLY_PROMPT.format(name=name, language_instruction=language_instruction)}]
 
         return _invoke_bedrock(content)
     except Exception:

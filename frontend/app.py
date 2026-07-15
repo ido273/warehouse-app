@@ -85,6 +85,7 @@ def inject_user():
         "active_workspace_name":    (active_ws["workspace_name"] if active_ws else None) or "No workspace",
         "active_workspace_role":    active_ws["role"] if active_ws else None,
         "active_workspace_invite":  active_ws.get("invite_code") if active_ws else None,
+        "active_workspace_tag_language": (active_ws.get("tag_language") if active_ws else None) or "en",
         "lang":                     lang,
         "t":                        get_translations(lang),
         "text_dir":                 "rtl" if lang == "he" else "ltr",
@@ -796,6 +797,7 @@ def update_workspace_settings():
         for w in workspaces:
             if w["workspace_id"] == ws_id:
                 w["workspace_name"] = result.get("name", w["workspace_name"])
+                w["tag_language"] = result.get("tag_language", w.get("tag_language"))
                 break
         session["workspaces"] = workspaces
         session.modified = True

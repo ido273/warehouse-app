@@ -1707,6 +1707,20 @@
     </div>
 
     <div class="form-group">
+      <label class="form-label">{{ t.tag_language_label }}</label>
+      <div style="display:flex;flex-direction:column;gap:0.4rem;">
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+          <input type="radio" name="settings-tag-language" id="settings-tag-language-en" value="en" checked>
+          {{ t.tag_language_en_option }}
+        </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+          <input type="radio" name="settings-tag-language" id="settings-tag-language-he" value="he">
+          {{ t.tag_language_he_option }}
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
       <label class="form-label">Invite Code</label>
       <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
         <code id="settings-invite-code" style="font-size:1rem;font-weight:800;color:var(--accent);letter-spacing:0.2em;font-family:monospace;flex-shrink:0;"></code>
@@ -2679,6 +2693,9 @@
     const wsName = document.querySelector('.sidebar-link span[style*="font-weight:600"]')?.textContent?.trim()
       || '{{ active_workspace_name }}';
     document.getElementById('settings-ws-name').value = wsName;
+    // Pre-fill tag language
+    const tagLang = '{{ active_workspace_tag_language }}';
+    document.getElementById('settings-tag-language-' + (tagLang === 'he' ? 'he' : 'en')).checked = true;
     // Pre-fill invite code
     const invCode = document.getElementById('sidebar-invite-code')?.textContent?.trim() || '{{ active_workspace_invite or "" }}';
     document.getElementById('settings-invite-code').textContent = invCode;
@@ -2691,11 +2708,12 @@
   async function saveWorkspaceName() {
     const name = document.getElementById('settings-ws-name').value.trim();
     if (!name) { showToast('Name is required', 'error'); return; }
+    const tagLanguage = document.querySelector('input[name="settings-tag-language"]:checked')?.value || 'en';
     try {
       const r = await fetch('/api/workspace-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, tag_language: tagLanguage })
       });
       if (r.ok) {
         showToast('Workspace name saved!');

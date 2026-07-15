@@ -31,6 +31,7 @@ jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 
 ROLES = ("admin", "manager", "contributor", "viewer")
+TAG_LANGUAGES = ("en", "he")
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -79,21 +80,23 @@ class UserLocation(db.Model):
 
 class Workspace(db.Model):
     __tablename__ = "workspaces"
-    id          = db.Column(db.Integer, primary_key=True)
-    name        = db.Column(db.String(255), nullable=False)
-    owner_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    invite_code = db.Column(db.String(8), unique=True, nullable=False)
-    created_at  = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    members     = db.relationship("UserWorkspace", back_populates="workspace",
-                                  cascade="all, delete-orphan", lazy=True)
+    id           = db.Column(db.Integer, primary_key=True)
+    name         = db.Column(db.String(255), nullable=False)
+    owner_id     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    invite_code  = db.Column(db.String(8), unique=True, nullable=False)
+    tag_language = db.Column(db.Enum("en", "he"), nullable=False, default="en")
+    created_at   = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    members      = db.relationship("UserWorkspace", back_populates="workspace",
+                                   cascade="all, delete-orphan", lazy=True)
 
     def to_dict(self):
         return {
-            "id":          self.id,
-            "name":        self.name,
-            "owner_id":    self.owner_id,
-            "invite_code": self.invite_code,
-            "created_at":  self.created_at.isoformat() if self.created_at else None,
+            "id":           self.id,
+            "name":         self.name,
+            "owner_id":     self.owner_id,
+            "invite_code":  self.invite_code,
+            "tag_language": self.tag_language,
+            "created_at":   self.created_at.isoformat() if self.created_at else None,
         }
 
 
@@ -112,6 +115,7 @@ class UserWorkspace(db.Model):
             "workspace_id":   self.workspace_id,
             "workspace_name": ws.name if ws else None,
             "invite_code":    ws.invite_code if ws else None,
+            "tag_language":   ws.tag_language if ws else None,
             "role":           self.role,
         }
 
@@ -349,8 +353,12 @@ def create_workspace():
     name = (data.get("name") or "").strip()
     if not name:
         return jsonify(error="name is required"), 400
+    tag_language = data.get("tag_language") or "en"
+    if tag_language not in TAG_LANGUAGES:
+        return jsonify(error="Invalid tag_language"), 400
 
-    workspace = Workspace(name=name, owner_id=user.id, invite_code=secrets.token_hex(4))
+    workspace = Workspace(name=name, owner_id=user.id, invite_code=secrets.token_hex(4),
+                          tag_language=tag_language)
     db.session.add(workspace)
     db.session.flush()
 
@@ -496,6 +504,11 @@ def update_workspace(workspace_id):
     if not name:
         return jsonify(error="name is required"), 400
     workspace.name = name
+    if "tag_language" in data:
+        tag_language = data.get("tag_language")
+        if tag_language not in TAG_LANGUAGES:
+            return jsonify(error="Invalid tag_language"), 400
+        workspace.tag_language = tag_language
     db.session.commit()
     return jsonify(workspace.to_dict())
 

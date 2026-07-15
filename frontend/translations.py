@@ -98,6 +98,11 @@ translations = {
         # ── Language toggle ──
         "lang_toggle_label": "EN",
 
+        # ── Workspace settings: tag language ──
+        "tag_language_label": "Tag Language",
+        "tag_language_en_option": "English",
+        "tag_language_he_option": "עברית (Hebrew + technical terms in English)",
+
         # ── Auth: login ──
         "welcome_back": "Welcome back",
         "sign_in_sub": "Sign in to your account to continue",
@@ -231,6 +236,11 @@ translations = {
 
         # ── Language toggle ──
         "lang_toggle_label": "עב",
+
+        # ── Workspace settings: tag language ──
+        "tag_language_label": "שפת תגים",
+        "tag_language_en_option": "אנגלית",
+        "tag_language_he_option": "עברית (Hebrew + technical terms in English)",
 
         # ── Auth: login ──
         "welcome_back": "ברוך שובך",
