@@ -3,9 +3,9 @@
 
 {% block content %}
 <div class="breadcrumb">
-  <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+  <a href="/"><i class="fa-solid fa-house"></i> {{ t.nav_home }}</a>
   <i class="fa-solid fa-chevron-right"></i>
-  <a href="/items">Items</a>
+  <a href="/items">{{ t.items_word }}</a>
   <i class="fa-solid fa-chevron-right"></i>
   <span>{{ item.name }}</span>
 </div>
@@ -63,7 +63,7 @@
           data-quantity="{{ item.quantity or 1 }}"
           data-image="{{ item.image or '' }}"
           onclick="openCardMenu(event, this)"
-          title="Options">
+          title="{{ t.options_title }}">
     <i class="fa-solid fa-ellipsis-vertical"></i>
   </button>
   {% endif %}
@@ -73,7 +73,7 @@
   <!-- Box card -->
   <div class="info-card">
     <div class="info-title">
-      <i class="fa-solid fa-box"></i> Storage Box
+      <i class="fa-solid fa-box"></i> {{ t.storage_box_title }}
     </div>
     {% if box %}
     <a href="/boxes/{{ box.id }}" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:0.9rem;padding:0.25rem 0;">
@@ -98,7 +98,7 @@
     </a>
     {% else %}
     <div style="color:var(--muted);font-size:0.875rem;padding:0.5rem 0;">
-      <i class="fa-solid fa-inbox" style="margin-right:0.4rem;"></i>Not assigned to any box
+      <i class="fa-solid fa-inbox" style="margin-right:0.4rem;"></i>{{ t.not_assigned_to_box }}
     </div>
     {% endif %}
   </div>
@@ -106,14 +106,14 @@
   <!-- Details card -->
   <div class="info-card">
     <div class="info-title">
-      <i class="fa-solid fa-circle-info"></i> Details
+      <i class="fa-solid fa-circle-info"></i> {{ t.details_title }}
     </div>
     <div class="info-row">
-      <span class="info-key">Code</span>
+      <span class="info-key">{{ t.code_label }}</span>
       <span class="code-chip">{{ item.code }}</span>
     </div>
     <div class="info-row">
-      <span class="info-key">Category</span>
+      <span class="info-key">{{ t.category_label }}</span>
       <span>
         {% if item.category %}
         <span class="badge badge-accent"><i class="fa-solid fa-tag"></i> {{ item.category }}</span>
@@ -121,28 +121,28 @@
       </span>
     </div>
     <div class="info-row">
-      <span class="info-key">Location</span>
-      <span>{{ item.location or 'Unassigned' }}</span>
+      <span class="info-key">{{ t.location_label }}</span>
+      <span>{{ item.location or t.unassigned }}</span>
     </div>
     <div class="info-row">
-      <span class="info-key">Quantity</span>
+      <span class="info-key">{{ t.quantity_label }}</span>
       <span>{{ item.quantity or 1 }}</span>
     </div>
     <div class="info-row">
-      <span class="info-key">Tags</span>
+      <span class="info-key">{{ t.tags_label }}</span>
       <span>{{ item.tags | length }}</span>
     </div>
     <div class="info-row">
-      <span class="info-key">Box</span>
+      <span class="info-key">{{ t.box_label }}</span>
       <span>{{ box.name if box else '—' }}</span>
     </div>
     <div class="info-row">
-      <span class="info-key">Created</span>
+      <span class="info-key">{{ t.created_label }}</span>
       <span>{{ item.created_at[:10] if item.created_at else '—' }}</span>
     </div>
     {% if item.last_modified_by %}
     <div class="info-row">
-      <span class="info-key">Modified by</span>
+      <span class="info-key">{{ t.modified_by_label }}</span>
       <span>{{ item.last_modified_by }}</span>
     </div>
     {% endif %}
@@ -151,7 +151,7 @@
 
 {% if item.tags %}
 <div class="info-card" style="margin-bottom:1.5rem;">
-  <div class="info-title"><i class="fa-solid fa-tags"></i> Tags</div>
+  <div class="info-title"><i class="fa-solid fa-tags"></i> {{ t.tags_label }}</div>
   <div>
     {% for tag in item.tags %}
     <a href="/search?q={{ tag | urlencode }}" class="tag" style="text-decoration:none;">{{ tag }}</a>
@@ -161,9 +161,9 @@
 {% endif %}
 
 <div class="info-card" style="margin-bottom:1.5rem;">
-  <div class="info-title"><i class="fa-solid fa-clock-rotate-left"></i> History</div>
+  <div class="info-title"><i class="fa-solid fa-clock-rotate-left"></i> {{ t.history_title }}</div>
   <div id="history-list" style="margin-top:0.5rem;">
-    <div style="color:var(--muted);font-size:0.875rem;">Loading…</div>
+    <div style="color:var(--muted);font-size:0.875rem;">{{ t.loading_text }}</div>
   </div>
 </div>
 
@@ -171,10 +171,10 @@
 <script>
   function relTime(iso) {
     const s = (Date.now() - new Date(iso)) / 1000;
-    if (s < 60)     return 'just now';
-    if (s < 3600)   return Math.floor(s / 60) + ' min ago';
-    if (s < 86400)  return Math.floor(s / 3600) + 'h ago';
-    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    if (s < 60)     return T.just_now;
+    if (s < 3600)   return T.min_ago.replace('{n}', Math.floor(s / 60));
+    if (s < 86400)  return T.hours_ago.replace('{n}', Math.floor(s / 3600));
+    if (s < 604800) return T.days_ago.replace('{n}', Math.floor(s / 86400));
     return new Date(iso).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
   }
   function entryIcon(e) {
@@ -187,12 +187,14 @@
     return e.action === 'deleted' ? 'rgba(239,154,154,0.12)' : 'rgba(124,106,247,0.12)';
   }
   function entryText(e) {
-    if (e.action === 'created') return `Created by <strong>${e.changed_by}</strong>`;
-    if (e.action === 'deleted') return `Deleted by <strong>${e.changed_by}</strong>`;
-    const f = e.field_changed || 'field';
-    if (e.old_value && e.new_value)
-      return `<strong>${f}</strong> changed from "<em>${e.old_value}</em>" to "<em>${e.new_value}</em>" by <strong>${e.changed_by}</strong>`;
-    return `<strong>${f}</strong> updated by <strong>${e.changed_by}</strong>`;
+    if (e.action === 'created') return `${T.created_by} <strong>${e.changed_by}</strong>`;
+    if (e.action === 'deleted') return `${T.deleted_by} <strong>${e.changed_by}</strong>`;
+    const f = e.field_changed || T.field_word;
+    if (e.old_value && e.new_value) {
+      const mid = T.field_changed_template.replace('{old}', e.old_value).replace('{new}', e.new_value);
+      return `<strong>${f}</strong> ${mid} <strong>${e.changed_by}</strong>`;
+    }
+    return `<strong>${f}</strong> ${T.updated_by} <strong>${e.changed_by}</strong>`;
   }
   (async () => {
     const el = document.getElementById('history-list');
@@ -200,7 +202,7 @@
       const r = await fetch('/api/items/{{ item.id }}/history');
       if (!r.ok) throw new Error();
       const entries = await r.json();
-      if (!entries.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;">No history yet.</div>'; return; }
+      if (!entries.length) { el.innerHTML = `<div style="color:var(--muted);font-size:0.875rem;">${T.no_history_yet}</div>`; return; }
       el.innerHTML = entries.map(e => `
         <div style="display:flex;align-items:flex-start;gap:0.85rem;padding:0.7rem 0;border-bottom:1px solid var(--border);">
           <div style="width:28px;height:28px;border-radius:50%;background:${iconBg(e)};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.1rem;">
@@ -211,7 +213,7 @@
             <div style="font-size:0.75rem;color:var(--muted);margin-top:0.15rem;">${relTime(e.created_at)}</div>
           </div>
         </div>`).join('');
-    } catch { el.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;">Could not load history.</div>'; }
+    } catch { el.innerHTML = `<div style="color:var(--muted);font-size:0.875rem;">${T.could_not_load_history}</div>`; }
   })();
 </script>
 {% endblock %}

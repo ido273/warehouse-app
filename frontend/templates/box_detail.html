@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="breadcrumb">
-  <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+  <a href="/"><i class="fa-solid fa-house"></i> {{ t.nav_home }}</a>
   <i class="fa-solid fa-chevron-right"></i>
   <span>{{ box.name }}</span>
 </div>
@@ -26,7 +26,7 @@
       {% if box.location %}
       <span><i class="fa-solid fa-location-dot"></i>{{ box.location }}</span>
       {% endif %}
-      <span><i class="fa-solid fa-cubes"></i>{{ items | length }} item{{ 's' if items | length != 1 }}</span>
+      <span><i class="fa-solid fa-cubes"></i>{{ items | length }} {{ t.item_singular if items | length == 1 else t.item_plural }}</span>
       <span><i class="fa-solid fa-calendar"></i>{{ box.created_at[:10] if box.created_at else '—' }}</span>
       {% if box.last_modified_by %}
       <span><i class="fa-solid fa-pen"></i>{{ box.last_modified_by }}</span>
@@ -38,7 +38,7 @@
   </div>
 
   <div class="qr-card">
-    <div class="qr-label"><i class="fa-solid fa-qrcode"></i> QR Code</div>
+    <div class="qr-label"><i class="fa-solid fa-qrcode"></i> {{ t.qr_code_label }}</div>
     <img id="qr-img" src="/api/boxes/{{ box.id }}/qr" alt="QR code for {{ box.name }}" loading="lazy">
     <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);">{{ box.code }}</div>
     {% if active_workspace_role in ['manager', 'admin'] %}
@@ -46,7 +46,7 @@
             data-public="{{ 'true' if box.is_public else 'false' }}"
             onclick="toggleVisibility()"
             style="margin-top:0.6rem;cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.3rem 0.75rem;font-size:0.8rem;color:var(--text);width:100%;">
-      {{ '🌐 Public' if box.is_public else '🔒 Private' }}
+      {{ t.public if box.is_public else t.private }}
     </button>
     {% endif %}
   </div>
@@ -63,7 +63,7 @@
           data-image="{{ box.image or '' }}"
           data-is-public="{{ 'true' if box.is_public else 'false' }}"
           onclick="openCardMenu(event, this)"
-          title="Options">
+          title="{{ t.options_title }}">
     <i class="fa-solid fa-ellipsis-vertical"></i>
   </button>
   {% endif %}
@@ -71,16 +71,16 @@
 
 <div class="page-header">
   <div>
-    <div class="page-title">Items in this Box</div>
-    <div class="page-subtitle">{{ items | length }} item{{ 's' if items | length != 1 }}</div>
+    <div class="page-title">{{ t.items_in_this_box_title }}</div>
+    <div class="page-subtitle">{{ items | length }} {{ t.item_singular if items | length == 1 else t.item_plural }}</div>
   </div>
   <div class="view-toggle">
     <button class="view-btn active" data-view="grid" data-container="viewContainer"
-            onclick="setView('grid','viewContainer')" title="Grid view">
+            onclick="setView('grid','viewContainer')" title="{{ t.grid_view }}">
       <i class="fa-solid fa-grip"></i>
     </button>
     <button class="view-btn" data-view="list" data-container="viewContainer"
-            onclick="setView('list','viewContainer')" title="List view">
+            onclick="setView('list','viewContainer')" title="{{ t.list_view }}">
       <i class="fa-solid fa-list"></i>
     </button>
   </div>
@@ -132,7 +132,7 @@
             data-tags='{{ item.tags | tojson }}'
             data-image="{{ item.image or '' }}"
             onclick="openCardMenu(event, this)"
-            title="Options">
+            title="{{ t.options_title }}">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
     {% endif %}
@@ -142,14 +142,14 @@
 {% else %}
 <div class="empty-state">
   <i class="fa-solid fa-cubes-stacked"></i>
-  <p>No items in this box yet — click <strong style="color:var(--accent);">+</strong> to add one!</p>
+  <p>{{ t.no_items_in_box_empty_before }} <strong style="color:var(--accent);">+</strong> {{ t.no_items_in_box_empty_after }}</p>
 </div>
 {% endif %}
 
 <div class="info-card" style="margin-top:1.5rem;">
-  <div class="info-title"><i class="fa-solid fa-clock-rotate-left"></i> History</div>
+  <div class="info-title"><i class="fa-solid fa-clock-rotate-left"></i> {{ t.history_title }}</div>
   <div id="history-list" style="margin-top:0.5rem;">
-    <div style="color:var(--muted);font-size:0.875rem;">Loading…</div>
+    <div style="color:var(--muted);font-size:0.875rem;">{{ t.loading_text }}</div>
   </div>
 </div>
 
@@ -168,7 +168,7 @@
       });
       if (r.ok) {
         btn.dataset.public = newVal ? 'true' : 'false';
-        btn.textContent = newVal ? '🌐 Public' : '🔒 Private';
+        btn.textContent = newVal ? T.public : T.private;
         document.getElementById('qr-img').src =
           '/api/boxes/{{ box.id }}/qr?t=' + Date.now();
       }
@@ -179,10 +179,10 @@
 
   function relTime(iso) {
     const s = (Date.now() - new Date(iso)) / 1000;
-    if (s < 60)     return 'just now';
-    if (s < 3600)   return Math.floor(s / 60) + ' min ago';
-    if (s < 86400)  return Math.floor(s / 3600) + 'h ago';
-    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    if (s < 60)     return T.just_now;
+    if (s < 3600)   return T.min_ago.replace('{n}', Math.floor(s / 60));
+    if (s < 86400)  return T.hours_ago.replace('{n}', Math.floor(s / 3600));
+    if (s < 604800) return T.days_ago.replace('{n}', Math.floor(s / 86400));
     return new Date(iso).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
   }
   function entryIcon(e) {
@@ -195,12 +195,14 @@
     return e.action === 'deleted' ? 'rgba(239,154,154,0.12)' : 'rgba(124,106,247,0.12)';
   }
   function entryText(e) {
-    if (e.action === 'created') return `Created by <strong>${e.changed_by}</strong>`;
-    if (e.action === 'deleted') return `Deleted by <strong>${e.changed_by}</strong>`;
-    const f = e.field_changed || 'field';
-    if (e.old_value && e.new_value)
-      return `<strong>${f}</strong> changed from "<em>${e.old_value}</em>" to "<em>${e.new_value}</em>" by <strong>${e.changed_by}</strong>`;
-    return `<strong>${f}</strong> updated by <strong>${e.changed_by}</strong>`;
+    if (e.action === 'created') return `${T.created_by} <strong>${e.changed_by}</strong>`;
+    if (e.action === 'deleted') return `${T.deleted_by} <strong>${e.changed_by}</strong>`;
+    const f = e.field_changed || T.field_word;
+    if (e.old_value && e.new_value) {
+      const mid = T.field_changed_template.replace('{old}', e.old_value).replace('{new}', e.new_value);
+      return `<strong>${f}</strong> ${mid} <strong>${e.changed_by}</strong>`;
+    }
+    return `<strong>${f}</strong> ${T.updated_by} <strong>${e.changed_by}</strong>`;
   }
   (async () => {
     const el = document.getElementById('history-list');
@@ -208,7 +210,7 @@
       const r = await fetch('/api/boxes/{{ box.id }}/history');
       if (!r.ok) throw new Error();
       const entries = await r.json();
-      if (!entries.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;">No history yet.</div>'; return; }
+      if (!entries.length) { el.innerHTML = `<div style="color:var(--muted);font-size:0.875rem;">${T.no_history_yet}</div>`; return; }
       el.innerHTML = entries.map(e => `
         <div style="display:flex;align-items:flex-start;gap:0.85rem;padding:0.7rem 0;border-bottom:1px solid var(--border);">
           <div style="width:28px;height:28px;border-radius:50%;background:${iconBg(e)};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.1rem;">
@@ -219,7 +221,7 @@
             <div style="font-size:0.75rem;color:var(--muted);margin-top:0.15rem;">${relTime(e.created_at)}</div>
           </div>
         </div>`).join('');
-    } catch { el.innerHTML = '<div style="color:var(--muted);font-size:0.875rem;">Could not load history.</div>'; }
+    } catch { el.innerHTML = `<div style="color:var(--muted);font-size:0.875rem;">${T.could_not_load_history}</div>`; }
   })();
 </script>
 {% endblock %}
