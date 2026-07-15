@@ -1403,6 +1403,11 @@
                style="display:none;margin-top:0.35rem;" autocomplete="off">
       </div>
       <div class="form-group">
+        <label class="form-label">{{ t.description_label }}</label>
+        <textarea class="form-input" id="box-description" rows="2"
+                  placeholder="{{ t.description_placeholder }}" style="resize:vertical;"></textarea>
+      </div>
+      <div class="form-group">
         <label class="form-label">{{ t.visibility_label }}</label>
         <button type="button" id="box-is-public-btn" data-public="false" onclick="toggleBoxPublicDraft()"
                 style="cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.55rem 0.75rem;font-size:0.85rem;color:var(--text);width:100%;">
@@ -1478,6 +1483,11 @@
             <i class="fa-solid fa-spinner fa-spin"></i> {{ t.generating_tags }}
           </div>
           <div id="item-tags-suggestions" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t.description_label }}</label>
+          <textarea class="form-input" id="item-description" rows="2"
+                    placeholder="{{ t.description_placeholder }}" style="resize:vertical;"></textarea>
         </div>
         <div class="form-group">
           <label class="form-label">
@@ -1566,6 +1576,11 @@
                style="display:none;margin-top:0.35rem;" autocomplete="off">
       </div>
       <div class="form-group">
+        <label class="form-label">{{ t.description_label }}</label>
+        <textarea class="form-input" id="edit-box-description" rows="2"
+                  placeholder="{{ t.description_placeholder }}" style="resize:vertical;"></textarea>
+      </div>
+      <div class="form-group">
         <label class="form-label">{{ t.visibility_label }}</label>
         <button type="button" id="edit-box-is-public-btn" data-public="false" onclick="toggleEditBoxVisibility()"
                 style="cursor:pointer;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0.55rem 0.75rem;font-size:0.85rem;color:var(--text);width:100%;">
@@ -1622,6 +1637,11 @@
           <option value="{{ box.id }}">{{ box.name }} ({{ box.code }})</option>
           {% endfor %}
         </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">{{ t.description_label }}</label>
+        <textarea class="form-input" id="edit-item-description" rows="2"
+                  placeholder="{{ t.description_placeholder }}" style="resize:vertical;"></textarea>
       </div>
       <div class="form-group">
         <label class="form-label">{{ t.tags_label }} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:0.7rem;">{{ t.tags_hint }}</span></label>
@@ -1993,6 +2013,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, location: boxLoc || null,
+          description: document.getElementById('box-description').value.trim() || null,
           is_public: document.getElementById('box-is-public-btn').dataset.public === 'true',
         })
       });
@@ -2051,6 +2072,7 @@
           category: category || null,
           location: itemLoc || null,
           box_id: boxId ? parseInt(boxId, 10) : null,
+          description: document.getElementById('item-description').value.trim() || null,
           quantity: parseInt(document.getElementById('item-quantity').value, 10) || 1,
           tags
         })
@@ -2075,6 +2097,7 @@
     const savedBoxId = document.getElementById('item-box-select').value;
     document.getElementById('item-name').value     = '';
     document.getElementById('item-category').value = '';
+    document.getElementById('item-description').value = '';
     resetLocField('item-location');
     document.getElementById('item-box-select').value = savedBoxId;
     clearTagChips();
@@ -2450,15 +2473,17 @@
           if (locCus) { locCus.style.display = ''; locCus.value = d.location; }
         }
       }
+      document.getElementById('edit-box-description').value = d.description || '';
       resetImgArea('edit-box-image', 'edit-box-image-area');
       const pubBtn = document.getElementById('edit-box-is-public-btn');
       const isPub  = d.isPublic === 'true';
       pubBtn.dataset.public = isPub ? 'true' : 'false';
       pubBtn.textContent = isPub ? '🌐 Public' : '🔒 Private';
     } else {
-      document.getElementById('edit-item-name').value     = d.name     || '';
-      document.getElementById('edit-item-category').value = d.category || '';
-      document.getElementById('edit-item-quantity').value = d.quantity  || 1;
+      document.getElementById('edit-item-name').value        = d.name        || '';
+      document.getElementById('edit-item-category').value    = d.category    || '';
+      document.getElementById('edit-item-description').value = d.description || '';
+      document.getElementById('edit-item-quantity').value    = d.quantity    || 1;
       const selBoxId = d.boxId || '';
       document.getElementById('edit-item-box-select').value = selBoxId;
       if (selBoxId) {
@@ -2503,8 +2528,9 @@
       const locSelEl  = document.getElementById('edit-box-location-select');
       if (locSelEl && locSelEl.style.display === 'none') await ensureLocationCreated(locVal);
       payload = {
-        name:     document.getElementById('edit-box-name').value.trim(),
-        location: locVal,
+        name:        document.getElementById('edit-box-name').value.trim(),
+        location:    locVal,
+        description: document.getElementById('edit-box-description').value.trim() || null,
       };
       imgInput = document.getElementById('edit-box-image');
       if (!payload.name) { showToast(T.box_name_required, 'error'); return; }
@@ -2514,12 +2540,13 @@
       const locSelEl  = document.getElementById('edit-item-location-select');
       if (locSelEl && locSelEl.style.display === 'none') await ensureLocationCreated(locVal);
       payload = {
-        name:     document.getElementById('edit-item-name').value.trim(),
-        category: document.getElementById('edit-item-category').value.trim() || null,
-        location: locVal,
-        box_id:   boxId ? parseInt(boxId, 10) : null,
-        quantity: parseInt(document.getElementById('edit-item-quantity').value, 10) || 1,
-        tags:     [...editTagsList],
+        name:        document.getElementById('edit-item-name').value.trim(),
+        category:    document.getElementById('edit-item-category').value.trim() || null,
+        location:    locVal,
+        box_id:      boxId ? parseInt(boxId, 10) : null,
+        description: document.getElementById('edit-item-description').value.trim() || null,
+        quantity:    parseInt(document.getElementById('edit-item-quantity').value, 10) || 1,
+        tags:        [...editTagsList],
       };
       imgInput = document.getElementById('edit-item-image');
       if (!payload.name) { showToast(T.item_name_required, 'error'); return; }
