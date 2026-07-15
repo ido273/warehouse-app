@@ -3,23 +3,23 @@
 
 {% block content %}
 <div class="breadcrumb">
-  <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+  <a href="/"><i class="fa-solid fa-house"></i> {{ t.nav_home }}</a>
   <i class="fa-solid fa-chevron-right"></i>
-  <span>All Items</span>
+  <span>{{ t.nav_all_items }}</span>
 </div>
 
 <div class="page-header">
   <div>
-    <div class="page-title">All Items</div>
-    <div class="page-subtitle">{{ items | length }} item{{ 's' if items | length != 1 }} in inventory</div>
+    <div class="page-title">{{ t.nav_all_items }}</div>
+    <div class="page-subtitle">{{ items | length }} {{ t.item_singular if items | length == 1 else t.item_plural }} {{ t.in_inventory_suffix }}</div>
   </div>
   <div class="view-toggle">
     <button class="view-btn active" data-view="grid" data-container="viewContainer"
-            onclick="setView('grid','viewContainer')" title="Grid view">
+            onclick="setView('grid','viewContainer')" title="{{ t.grid_view }}">
       <i class="fa-solid fa-grip"></i>
     </button>
     <button class="view-btn" data-view="list" data-container="viewContainer"
-            onclick="setView('list','viewContainer')" title="List view">
+            onclick="setView('list','viewContainer')" title="{{ t.list_view }}">
       <i class="fa-solid fa-list"></i>
     </button>
   </div>
@@ -37,9 +37,9 @@
 <div class="filter-bar-wrap">
   <div class="filter-bar">
     <div class="filter-group">
-      <label class="filter-label">Location</label>
+      <label class="filter-label">{{ t.location_label }}</label>
       <select class="filter-select" id="filter-location" onchange="applyFilters()">
-        <option value="">All Locations</option>
+        <option value="">{{ t.all_locations_option }}</option>
         {% for loc in all_locations | sort %}
         <option value="{{ loc | lower }}">{{ loc }}</option>
         {% endfor %}
@@ -47,9 +47,9 @@
     </div>
 
     <div class="filter-group">
-      <label class="filter-label">Category</label>
+      <label class="filter-label">{{ t.category_label }}</label>
       <select class="filter-select" id="filter-category" onchange="applyFilters()">
-        <option value="">All Categories</option>
+        <option value="">{{ t.all_categories_option }}</option>
         {% for cat in all_categories | sort %}
         <option value="{{ cat | lower }}">{{ cat }}</option>
         {% endfor %}
@@ -57,12 +57,12 @@
     </div>
 
     <div class="filter-group">
-      <label class="filter-label">Tag</label>
-      <input type="text" class="filter-input" id="filter-tag" placeholder="Filter by tag…" oninput="applyFilters()">
+      <label class="filter-label">{{ t.tag_label }}</label>
+      <input type="text" class="filter-input" id="filter-tag" placeholder="{{ t.filter_by_tag_placeholder }}" oninput="applyFilters()">
     </div>
 
     <button class="filter-clear" onclick="clearFilters()">
-      <i class="fa-solid fa-xmark"></i> Clear
+      <i class="fa-solid fa-xmark"></i> {{ t.clear_btn }}
     </button>
   </div>
 </div>
@@ -113,7 +113,7 @@
           </span>
           {% else %}
           <span class="badge badge-gray">
-            <i class="fa-solid fa-inbox"></i> No box
+            <i class="fa-solid fa-inbox"></i> {{ t.no_box_badge }}
           </span>
           {% endif %}
           {% for tag in item.tags %}
@@ -135,7 +135,7 @@
             data-quantity="{{ item.quantity or 1 }}"
             data-image="{{ item.image or '' }}"
             onclick="openCardMenu(event, this)"
-            title="Options">
+            title="{{ t.options_title }}">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
     {% endif %}
@@ -145,7 +145,7 @@
 {% else %}
 <div class="empty-state">
   <i class="fa-solid fa-cube"></i>
-  <p>No items yet — click <strong style="color:var(--accent);">+</strong> to add one!</p>
+  <p>{{ t.no_items_empty_before }} <strong style="color:var(--accent);">+</strong> {{ t.no_items_empty_after }}</p>
 </div>
 {% endif %}
 {% endblock %}

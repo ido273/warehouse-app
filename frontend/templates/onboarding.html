@@ -242,6 +242,19 @@
                    placeholder="{{ t.workspace_name_placeholder }}" required autocomplete="off">
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">{{ t.tag_language_label }}</label>
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+              <input type="radio" name="tag_language" value="en" checked>
+              {{ t.tag_language_en_option }}
+            </label>
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+              <input type="radio" name="tag_language" value="he">
+              {{ t.tag_language_he_option }}
+            </label>
+          </div>
+        </div>
         <button class="btn btn-primary" type="submit">
           <i class="fa-solid fa-plus"></i> {{ t.create_workspace_btn }}
         </button>

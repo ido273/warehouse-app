@@ -29,6 +29,11 @@ BACKEND_URL      = os.environ.get("BACKEND_URL", "http://backend:8080")
 AUTH_SERVICE_URL = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:8080")
 
 
+def t(key):
+    """Look up a translation string in the caller's current session language."""
+    return get_translations(session.get("lang", DEFAULT_LANGUAGE))[key]
+
+
 def image_url(img):
     """Images are stored either as a full S3 URL or (legacy) a local upload filename."""
     if not img:
@@ -357,12 +362,17 @@ def onboarding():
 def onboarding_create():
     name = request.form.get("name", "").strip()
     if not name:
-        return render_template("onboarding.html", create_error="Workspace name is required")
-    result, status = auth_post("/auth/workspaces", {"name": name}, headers=_jwt_headers())
+        return render_template("onboarding.html", create_error=t("workspace_name_required"))
+    tag_language = request.form.get("tag_language", "en")
+    if tag_language not in SUPPORTED_LANGUAGES:
+        tag_language = "en"
+    result, status = auth_post(
+        "/auth/workspaces", {"name": name, "tag_language": tag_language}, headers=_jwt_headers()
+    )
     if status == 201 and result:
         _store_workspace_in_session(result)
         return redirect(url_for("index"))
-    error = (result or {}).get("error") or "Failed to create workspace"
+    error = (result or {}).get("error") or t("failed_to_create_workspace")
     return render_template("onboarding.html", create_error=error)
 
 
@@ -417,7 +427,7 @@ def index():
 def box_detail(box_id):
     box = backend_get(f"/api/boxes/{box_id}")
     if not box:
-        return render_template("error.html", message="Box not found"), 404
+        return render_template("error.html", message=t("box_not_found")), 404
     all_items = backend_get("/api/items") or []
     box_items = [i for i in all_items if i.get("box_id") == box_id]
     all_boxes, locations = sidebar_data()
@@ -440,7 +450,7 @@ def box_qr_target(box_id):
         if not session.get("token"):
             return redirect(url_for("login", next=request.path))
         return redirect(url_for("box_detail", box_id=box_id))
-    return render_template("error.html", message="Box not found"), 404
+    return render_template("error.html", message=t("box_not_found")), 404
 
 
 @app.route("/items")
@@ -458,7 +468,7 @@ def items():
 def item_detail(item_id):
     item = backend_get(f"/api/items/{item_id}")
     if not item:
-        return render_template("error.html", message="Item not found"), 404
+        return render_template("error.html", message=t("item_not_found")), 404
     box = None
     if item.get("box_id"):
         box = backend_get(f"/api/boxes/{item['box_id']}")

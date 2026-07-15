@@ -3,33 +3,33 @@
 
 {% block content %}
 <div class="search-hero">
-  <h1><i class="fa-solid fa-warehouse"></i> Warehouse Manager</h1>
+  <h1><i class="fa-solid fa-warehouse"></i> {{ t.home_hero_title }}</h1>
   {% if active_workspace_name and active_workspace_name != 'No workspace' %}
   <div style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem;background:rgba(124,106,247,0.08);border:1px solid var(--border);border-radius:999px;padding:0.2rem 0.75rem;">
     <i class="fa-solid fa-building" style="color:var(--accent);font-size:0.7rem;"></i>
     {{ active_workspace_name }}
   </div>
   {% endif %}
-  <p>Find and manage all your storage boxes and items in one place</p>
+  <p>{{ t.home_hero_sub }}</p>
   <form class="search-bar" action="/search" method="get" role="search">
     <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="text" name="q" placeholder="Search boxes and items…" autocomplete="off" autofocus>
-    <button type="submit">Search</button>
+    <input type="text" name="q" placeholder="{{ t.search_boxes_items_placeholder }}" autocomplete="off" autofocus>
+    <button type="submit">{{ t.search_btn }}</button>
   </form>
 </div>
 
 <div class="stats-row">
   <div class="stat-card">
     <div class="stat-value" id="stat-boxes">{{ boxes | length }}</div>
-    <div class="stat-label"><i class="fa-solid fa-box"></i> Total Boxes</div>
+    <div class="stat-label"><i class="fa-solid fa-box"></i> {{ t.total_boxes_label }}</div>
   </div>
   <div class="stat-card">
     <div class="stat-value" id="stat-items">{{ items | length }}</div>
-    <div class="stat-label"><i class="fa-solid fa-cube"></i> All Items</div>
+    <div class="stat-label"><i class="fa-solid fa-cube"></i> {{ t.nav_all_items }}</div>
   </div>
   <div class="stat-card">
     <div class="stat-value" id="stat-locations">{{ locations | length }}</div>
-    <div class="stat-label"><i class="fa-solid fa-location-dot"></i> Locations</div>
+    <div class="stat-label"><i class="fa-solid fa-location-dot"></i> {{ t.locations_stat_label }}</div>
   </div>
 </div>
 
@@ -45,9 +45,9 @@
 <div class="filter-bar-wrap">
   <div class="filter-bar">
     <div class="filter-group">
-      <label class="filter-label">Location</label>
+      <label class="filter-label">{{ t.location_label }}</label>
       <select class="filter-select" id="filter-location" onchange="applyFilters()">
-        <option value="">All Locations</option>
+        <option value="">{{ t.all_locations_option }}</option>
         {% for loc in all_locations | sort %}
         <option value="{{ loc | lower }}">{{ loc }}</option>
         {% endfor %}
@@ -55,9 +55,9 @@
     </div>
 
     <div class="filter-group">
-      <label class="filter-label">Category</label>
+      <label class="filter-label">{{ t.category_label }}</label>
       <select class="filter-select" id="filter-category" onchange="applyFilters()">
-        <option value="">All Categories</option>
+        <option value="">{{ t.all_categories_option }}</option>
         {% for cat in all_categories | sort %}
         <option value="{{ cat | lower }}">{{ cat }}</option>
         {% endfor %}
@@ -65,21 +65,21 @@
     </div>
 
     <div class="filter-group">
-      <label class="filter-label">Tag</label>
-      <input type="text" class="filter-input" id="filter-tag" placeholder="Filter by tag…" oninput="applyFilters()">
+      <label class="filter-label">{{ t.tag_label }}</label>
+      <input type="text" class="filter-input" id="filter-tag" placeholder="{{ t.filter_by_tag_placeholder }}" oninput="applyFilters()">
     </div>
 
     <div class="filter-group">
-      <label class="filter-label">Type</label>
+      <label class="filter-label">{{ t.filter_type_label }}</label>
       <div class="filter-toggle">
-        <button class="filter-btn active" data-type="all"  onclick="setTypeFilter('all')">All</button>
-        <button class="filter-btn"        data-type="box"  onclick="setTypeFilter('box')">Boxes</button>
-        <button class="filter-btn"        data-type="item" onclick="setTypeFilter('item')">Items</button>
+        <button class="filter-btn active" data-type="all"  onclick="setTypeFilter('all')">{{ t.filter_all }}</button>
+        <button class="filter-btn"        data-type="box"  onclick="setTypeFilter('box')">{{ t.filter_boxes }}</button>
+        <button class="filter-btn"        data-type="item" onclick="setTypeFilter('item')">{{ t.filter_items }}</button>
       </div>
     </div>
 
     <button class="filter-clear" onclick="clearFilters()">
-      <i class="fa-solid fa-xmark"></i> Clear
+      <i class="fa-solid fa-xmark"></i> {{ t.clear_btn }}
     </button>
   </div>
 </div>
@@ -87,16 +87,16 @@
 <!-- ── Boxes section ── -->
 <div class="page-header">
   <div>
-    <div class="page-title">All Boxes</div>
-    <div class="page-subtitle">{{ boxes | length }} storage box{{ 'es' if boxes | length != 1 }}</div>
+    <div class="page-title">{{ t.all_boxes_title }}</div>
+    <div class="page-subtitle">{{ boxes | length }} {{ t.storage_box_singular if boxes | length == 1 else t.storage_box_plural }}</div>
   </div>
   <div class="view-toggle">
     <button class="view-btn active" data-view="grid" data-container="viewContainer"
-            onclick="setView('grid','viewContainer')" title="Grid view">
+            onclick="setView('grid','viewContainer')" title="{{ t.grid_view }}">
       <i class="fa-solid fa-grip"></i>
     </button>
     <button class="view-btn" data-view="list" data-container="viewContainer"
-            onclick="setView('list','viewContainer')" title="List view">
+            onclick="setView('list','viewContainer')" title="{{ t.list_view }}">
       <i class="fa-solid fa-list"></i>
     </button>
   </div>
@@ -159,7 +159,7 @@
             data-image="{{ box.image or '' }}"
             data-is-public="{{ 'true' if box.is_public else 'false' }}"
             onclick="openCardMenu(event, this)"
-            title="Options">
+            title="{{ t.options_title }}">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
     {% endif %}
@@ -169,7 +169,7 @@
 {% else %}
 <div class="empty-state">
   <i class="fa-solid fa-box-open"></i>
-  <p>No boxes yet — click the <strong style="color:var(--accent);">+</strong> button to create one!</p>
+  <p>{{ t.no_boxes_empty_before }} <strong style="color:var(--accent);">+</strong> {{ t.no_boxes_empty_after }}</p>
 </div>
 {% endif %}
 </div>
@@ -177,16 +177,16 @@
 <!-- ── Items section ── -->
 <div class="page-header" style="margin-top:2.5rem;">
   <div>
-    <div class="page-title">All Items</div>
-    <div class="page-subtitle">{{ items | length }} item{{ 's' if items | length != 1 }} in inventory</div>
+    <div class="page-title">{{ t.nav_all_items }}</div>
+    <div class="page-subtitle">{{ items | length }} {{ t.item_singular if items | length == 1 else t.item_plural }} {{ t.in_inventory_suffix }}</div>
   </div>
   <div class="view-toggle">
     <button class="view-btn active" data-view="grid" data-container="itemsContainer"
-            onclick="setView('grid','itemsContainer')" title="Grid view">
+            onclick="setView('grid','itemsContainer')" title="{{ t.grid_view }}">
       <i class="fa-solid fa-grip"></i>
     </button>
     <button class="view-btn" data-view="list" data-container="itemsContainer"
-            onclick="setView('list','itemsContainer')" title="List view">
+            onclick="setView('list','itemsContainer')" title="{{ t.list_view }}">
       <i class="fa-solid fa-list"></i>
     </button>
   </div>
@@ -255,7 +255,7 @@
             data-quantity="{{ item.quantity or 1 }}"
             data-image="{{ item.image or '' }}"
             onclick="openCardMenu(event, this)"
-            title="Options">
+            title="{{ t.options_title }}">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
     {% endif %}
@@ -265,7 +265,7 @@
 {% else %}
 <div class="empty-state">
   <i class="fa-solid fa-cube"></i>
-  <p>No items yet — click the <strong style="color:var(--accent);">+</strong> button to add one!</p>
+  <p>{{ t.no_items_empty_before }} <strong style="color:var(--accent);">+</strong> {{ t.no_items_empty_after }}</p>
 </div>
 {% endif %}
 </div>

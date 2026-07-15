@@ -1,34 +1,44 @@
 # Hebrew i18n — follow-up
 
-This PR covers the shared chrome (navbar, sidebar, add/edit item+box modal,
-card dropdown, delete confirmation, core toasts) and the standalone auth
-pages (login, register, onboarding, workspace-pending). Scoped down from
-"translate everything" after flagging the full-coverage effort/risk
-trade-off — see PR description.
+Originally scoped down from "translate everything" in PR #8 after flagging
+the full-coverage effort/risk trade-off. Since then:
 
-Not yet translated (English strings remain when Hebrew is selected):
+- PR #8: shared chrome (navbar, sidebar, add/edit item+box modal, card
+  dropdown, delete confirmation, core toasts) + standalone auth pages
+  (login, register, onboarding, workspace-pending).
+- PR #9: workspace tag-language preference (Settings modal selector) +
+  ai-tagging language-aware prompts — the "defer ai-tagging language
+  awareness" note from the original version of this file is stale, that
+  landed.
+- This pass: content pages (`index.html`, `items.html`, `item_detail.html`,
+  `box_detail.html`, `box_public.html`, `search.html`, `error.html`) —
+  headings, filter labels, stat cards, empty states, card badges, the
+  history-feed JS strings (`relTime`/`entryText`), and the `Box not
+  found`/`Item not found`/"workspace name required"/"failed to create
+  workspace" messages the frontend itself generates. Tag-language selector
+  added to the workspace *creation* form (previously Settings-modal only).
 
-- **Content pages** extending `base.html`: `index.html`, `items.html`,
-  `item_detail.html`, `box_detail.html`, `box_public.html`, `search.html`,
-  `error.html` — page headings, filter labels, stat cards, empty states,
-  card badges ("No box", quantity ×N, etc.), and the history-feed JS strings
-  (`relTime`, `entryText` — "3 min ago", "Created by X", etc.).
+Still not translated (English strings remain when Hebrew is selected):
+
 - **Admin modals** in `base.html`: Manage Locations, Workspace Settings
   (name/invite-code/members), Pending Join Requests — including their
   toasts (invite code copied, role updated, request approved/rejected,
   location added/deleted).
-- **Backend error messages**: `err.error` strings returned by the Flask
-  backend (e.g. validation errors) are English-only; the frontend shows them
-  verbatim regardless of UI language. Localizing these needs either backend
-  message keys or frontend-side mapping.
-- **Pluralization**: English-specific suffix logic (`'s' if count != 1`,
-  `'es' if ...`) is baked directly into a few templates. Hebrew plural
-  grammar doesn't map onto that pattern — needs real handling, not just a
-  translated noun, wherever it's tackled.
+- **Backend-returned error messages**: `err.error` strings that originate
+  from the Flask *backend*/*auth-service* (e.g. "X already exists",
+  validation errors) are English-only; the frontend shows them verbatim
+  regardless of UI language. Localizing these needs backend message keys
+  or a frontend-side mapping — different from the frontend-generated
+  messages (now translated) like "Box not found".
+- **Pluralization is a simplified singular/plural split, not full Hebrew
+  grammar.** Content pages now pick between two translated noun forms
+  (e.g. `item_singular`/`item_plural`) instead of the old English `'s'`
+  suffix hack, which is the correct *shape* for Hebrew (no `-s` grammar to
+  begin with) — but doesn't handle Hebrew's dual form or construct-state
+  nouns. Acceptable for a UI count display, not linguistically complete.
+- **Relative time strings** (`just now`, `{n} min/h/d ago`) use simplified
+  Hebrew phrasing (e.g. "לפני X דקות") without proper singular/dual/plural
+  agreement (1 minute vs. 2 minutes vs. 5 minutes take different Hebrew
+  forms) — same simplification tradeoff as above.
 - **`<title>` tags**: browser-tab titles per page are still hardcoded
   English (low priority, not user-facing chrome).
-
-ai-tagging language awareness (passing the UI language into the
-`suggest-tags` → Bedrock prompt) is intentionally not part of this PR either,
-per the explicit requirement to defer it to a later PR alongside workspace
-settings.

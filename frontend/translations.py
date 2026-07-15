@@ -1,10 +1,11 @@
 """UI translation strings for the frontend.
 
-Coverage in this pass: shared chrome (navbar, sidebar, add/edit modals, card
-dropdown, delete confirmation) used across every page, plus the standalone
-auth pages (login, register, onboarding, workspace-pending). Per-page body
-content (item/box card grids, filters, item detail, search, error pages) is
-not yet translated — see hebrew_i18n_followup.md for the tracked list.
+Covers shared chrome (navbar, sidebar, add/edit modals, card dropdown,
+delete confirmation), the standalone auth pages, and the content pages
+(home, items, item/box detail, box public, search, error) including the
+history feed. Still not translated: the admin-only modals (Manage
+Locations, Workspace Settings, Pending Requests) and their toasts, and
+backend-returned error message strings — see hebrew_i18n_followup.md.
 """
 
 translations = {
@@ -127,6 +128,8 @@ translations = {
 
         # ── Onboarding ──
         "onboarding_sub": "Every inventory lives in a workspace. Create one or join an existing team.",
+        "workspace_name_required": "Workspace name is required",
+        "failed_to_create_workspace": "Failed to create workspace",
         "create_workspace_title": "Create a new workspace",
         "create_workspace_desc": "Start fresh — you'll be the admin",
         "workspace_name_label": "Workspace name",
@@ -148,6 +151,90 @@ translations = {
         "pending_step3": "You'll be added as a viewer once approved",
         "join_different_workspace": "Join a different workspace",
         "sign_out_btn": "Sign out",
+
+        # ── Content pages: home ──
+        "home_hero_title": "Warehouse Manager",
+        "home_hero_sub": "Find and manage all your storage boxes and items in one place",
+        "search_boxes_items_placeholder": "Search boxes and items…",
+        "search_btn": "Search",
+        "total_boxes_label": "Total Boxes",
+        "locations_stat_label": "Locations",
+        "all_boxes_title": "All Boxes",
+        "storage_box_singular": "storage box",
+        "storage_box_plural": "storage boxes",
+        "item_singular": "item",
+        "item_plural": "items",
+        "in_inventory_suffix": "in inventory",
+        "no_boxes_empty_before": "No boxes yet — click the",
+        "no_boxes_empty_after": "button to create one!",
+        "no_items_empty_before": "No items yet — click the",
+        "no_items_empty_after": "button to add one!",
+
+        # ── Content pages: shared (cards, filters, detail pages) ──
+        "grid_view": "Grid view",
+        "list_view": "List view",
+        "clear_btn": "Clear",
+        "tag_label": "Tag",
+        "filter_by_tag_placeholder": "Filter by tag…",
+        "filter_type_label": "Type",
+        "filter_all": "All",
+        "filter_boxes": "Boxes",
+        "filter_items": "Items",
+        "all_locations_option": "All Locations",
+        "all_categories_option": "All Categories",
+        "no_box_badge": "No box",
+        "unassigned": "Unassigned",
+        "view_link": "View",
+        "items_word": "Items",
+        "storage_box_title": "Storage Box",
+        "not_assigned_to_box": "Not assigned to any box",
+        "details_title": "Details",
+        "code_label": "Code",
+        "created_label": "Created",
+        "modified_by_label": "Modified by",
+
+        # ── Content pages: box detail / public ──
+        "public_box_label": "Public box",
+        "items_in_this_box_title": "Items in this Box",
+        "qr_code_label": "QR Code",
+        "no_items_in_box_empty_before": "No items in this box yet — click",
+        "no_items_in_box_empty_after": "to add one!",
+        "no_items_in_box_public": "No items in this box yet.",
+
+        # ── History feed ──
+        "history_title": "History",
+        "loading_text": "Loading…",
+        "no_history_yet": "No history yet.",
+        "could_not_load_history": "Could not load history.",
+        "created_by": "Created by",
+        "deleted_by": "Deleted by",
+        "updated_by": "updated by",
+        "field_changed_template": 'changed from "{old}" to "{new}" by',
+        "field_word": "field",
+        "just_now": "just now",
+        "min_ago": "{n} min ago",
+        "hours_ago": "{n}h ago",
+        "days_ago": "{n}d ago",
+
+        # ── Search page ──
+        "search_title": "Search",
+        "search_items_sub": "Search items by name, category, or tag",
+        "search_items_placeholder": "Search items…",
+        "result_singular": "result",
+        "result_plural": "results",
+        "for_word": "for",
+        "no_results_for": "No results for",
+        "searching_sub": "Searching items by name, category, and tags",
+        "no_match_before": "No items match",
+        "no_match_after": "— try a different keyword.",
+        "enter_term_to_search": "Enter a term above to search across all items, categories, and tags.",
+
+        # ── Error page ──
+        "something_went_wrong": "Something went wrong",
+        "resource_not_found": "The resource you are looking for could not be found.",
+        "back_to_home": "Back to Home",
+        "box_not_found": "Box not found",
+        "item_not_found": "Item not found",
     },
     "he": {
         # ── Navbar / sidebar ──
@@ -268,6 +355,8 @@ translations = {
 
         # ── Onboarding ──
         "onboarding_sub": "כל מלאי שייך לסביבת עבודה. צור אחת או הצטרף לצוות קיים.",
+        "workspace_name_required": "נדרש שם סביבת עבודה",
+        "failed_to_create_workspace": "יצירת סביבת העבודה נכשלה",
         "create_workspace_title": "צור סביבת עבודה חדשה",
         "create_workspace_desc": "התחל מחדש — תהיה המנהל",
         "workspace_name_label": "שם סביבת עבודה",
@@ -289,6 +378,90 @@ translations = {
         "pending_step3": "תתווסף כצופה לאחר האישור",
         "join_different_workspace": "הצטרף לסביבת עבודה אחרת",
         "sign_out_btn": "התנתק",
+
+        # ── Content pages: home ──
+        "home_hero_title": "מנהל המחסן",
+        "home_hero_sub": "מצא ונהל את כל קופסאות ופריטי האחסון שלך במקום אחד",
+        "search_boxes_items_placeholder": "חיפוש קופסאות ופריטים…",
+        "search_btn": "חפש",
+        "total_boxes_label": "סה\"כ קופסאות",
+        "locations_stat_label": "מיקומים",
+        "all_boxes_title": "כל הקופסאות",
+        "storage_box_singular": "קופסת אחסון",
+        "storage_box_plural": "קופסאות אחסון",
+        "item_singular": "פריט",
+        "item_plural": "פריטים",
+        "in_inventory_suffix": "במלאי",
+        "no_boxes_empty_before": "עדיין אין קופסאות — לחץ על כפתור ה",
+        "no_boxes_empty_after": "כדי ליצור אחת!",
+        "no_items_empty_before": "עדיין אין פריטים — לחץ על כפתור ה",
+        "no_items_empty_after": "כדי להוסיף אחד!",
+
+        # ── Content pages: shared (cards, filters, detail pages) ──
+        "grid_view": "תצוגת רשת",
+        "list_view": "תצוגת רשימה",
+        "clear_btn": "נקה",
+        "tag_label": "תגית",
+        "filter_by_tag_placeholder": "סינון לפי תגית…",
+        "filter_type_label": "סוג",
+        "filter_all": "הכל",
+        "filter_boxes": "קופסאות",
+        "filter_items": "פריטים",
+        "all_locations_option": "כל המיקומים",
+        "all_categories_option": "כל הקטגוריות",
+        "no_box_badge": "ללא קופסה",
+        "unassigned": "לא משויך",
+        "view_link": "צפייה",
+        "items_word": "פריטים",
+        "storage_box_title": "קופסת אחסון",
+        "not_assigned_to_box": "לא משויך לאף קופסה",
+        "details_title": "פרטים",
+        "code_label": "קוד",
+        "created_label": "נוצר",
+        "modified_by_label": "שונה על ידי",
+
+        # ── Content pages: box detail / public ──
+        "public_box_label": "קופסה ציבורית",
+        "items_in_this_box_title": "פריטים בקופסה זו",
+        "qr_code_label": "קוד QR",
+        "no_items_in_box_empty_before": "עדיין אין פריטים בקופסה זו — לחץ על",
+        "no_items_in_box_empty_after": "כדי להוסיף אחד!",
+        "no_items_in_box_public": "עדיין אין פריטים בקופסה זו.",
+
+        # ── History feed ──
+        "history_title": "היסטוריה",
+        "loading_text": "טוען…",
+        "no_history_yet": "אין היסטוריה עדיין.",
+        "could_not_load_history": "טעינת ההיסטוריה נכשלה.",
+        "created_by": "נוצר על ידי",
+        "deleted_by": "נמחק על ידי",
+        "updated_by": "עודכן על ידי",
+        "field_changed_template": 'השתנה מ-"{old}" ל-"{new}" על ידי',
+        "field_word": "שדה",
+        "just_now": "עכשיו",
+        "min_ago": "לפני {n} דקות",
+        "hours_ago": "לפני {n} שעות",
+        "days_ago": "לפני {n} ימים",
+
+        # ── Search page ──
+        "search_title": "חיפוש",
+        "search_items_sub": "חפש פריטים לפי שם, קטגוריה או תגית",
+        "search_items_placeholder": "חיפוש פריטים…",
+        "result_singular": "תוצאה",
+        "result_plural": "תוצאות",
+        "for_word": "עבור",
+        "no_results_for": "אין תוצאות עבור",
+        "searching_sub": "מחפש פריטים לפי שם, קטגוריה ותגיות",
+        "no_match_before": "לא נמצאו פריטים התואמים את",
+        "no_match_after": "— נסה מילת חיפוש אחרת.",
+        "enter_term_to_search": "הזן מונח למעלה כדי לחפש בכל הפריטים, הקטגוריות והתגיות.",
+
+        # ── Error page ──
+        "something_went_wrong": "משהו השתבש",
+        "resource_not_found": "המשאב שחיפשת לא נמצא.",
+        "back_to_home": "חזרה לדף הבית",
+        "box_not_found": "הקופסה לא נמצאה",
+        "item_not_found": "הפריט לא נמצא",
     },
 }
 

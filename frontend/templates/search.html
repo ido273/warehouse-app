@@ -3,13 +3,13 @@
 
 {% block content %}
 <div class="search-hero" style="padding: 2rem 0 1.75rem;">
-  <h1>Search</h1>
-  <p>Search items by name, category, or tag</p>
+  <h1>{{ t.search_title }}</h1>
+  <p>{{ t.search_items_sub }}</p>
   <form class="search-bar" action="/search" method="get" role="search">
     <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="text" name="q" placeholder="Search items…"
+    <input type="text" name="q" placeholder="{{ t.search_items_placeholder }}"
            value="{{ q }}" autocomplete="off" autofocus>
-    <button type="submit">Search</button>
+    <button type="submit">{{ t.search_btn }}</button>
   </form>
 </div>
 
@@ -18,22 +18,22 @@
   <div>
     <div class="page-title">
       {% if results %}
-        {{ results | length }} result{{ 's' if results | length != 1 }} for
+        {{ results | length }} {{ t.result_singular if results | length == 1 else t.result_plural }} {{ t.for_word }}
         "<span style="color:var(--accent);">{{ q }}</span>"
       {% else %}
-        No results for "<span style="color:var(--accent);">{{ q }}</span>"
+        {{ t.no_results_for }} "<span style="color:var(--accent);">{{ q }}</span>"
       {% endif %}
     </div>
-    <div class="page-subtitle">Searching items by name, category, and tags</div>
+    <div class="page-subtitle">{{ t.searching_sub }}</div>
   </div>
   {% if results %}
   <div class="view-toggle">
     <button class="view-btn active" data-view="grid" data-container="viewContainer"
-            onclick="setView('grid','viewContainer')" title="Grid view">
+            onclick="setView('grid','viewContainer')" title="{{ t.grid_view }}">
       <i class="fa-solid fa-grip"></i>
     </button>
     <button class="view-btn" data-view="list" data-container="viewContainer"
-            onclick="setView('list','viewContainer')" title="List view">
+            onclick="setView('list','viewContainer')" title="{{ t.list_view }}">
       <i class="fa-solid fa-list"></i>
     </button>
   </div>
@@ -72,14 +72,14 @@
 {% else %}
 <div class="empty-state">
   <i class="fa-solid fa-circle-xmark"></i>
-  <p>No items match "<strong>{{ q }}</strong>" — try a different keyword.</p>
+  <p>{{ t.no_match_before }} "<strong>{{ q }}</strong>" {{ t.no_match_after }}</p>
 </div>
 {% endif %}
 
 {% else %}
 <div class="empty-state">
   <i class="fa-solid fa-magnifying-glass"></i>
-  <p>Enter a term above to search across all items, categories, and tags.</p>
+  <p>{{ t.enter_term_to_search }}</p>
 </div>
 {% endif %}
 {% endblock %}
