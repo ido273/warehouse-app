@@ -33,7 +33,7 @@ UPLOAD_FOLDER      = os.environ.get("UPLOAD_FOLDER", "/app/uploads")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
-S3_REGION      = "eu-west-1"
+S3_REGION      = os.environ.get("S3_REGION", "eu-west-1")
 S3_URL_PREFIX  = f"https://{S3_BUCKET_NAME}.s3.{S3_REGION}.amazonaws.com/"
 s3_client      = boto3.client("s3", region_name=S3_REGION)
 
