@@ -152,15 +152,12 @@ def get_current_user_display_name():
         return "Unknown"
 
 
-def fetch_ai_tags(item):
-    """Ask ai-tagging for suggested tags. Returns [] on any failure (network,
-    timeout, bad response) so item creation never fails because of it."""
+def fetch_ai_tags(name, language="en"):
+    """Ask ai-tagging for suggested tags for a not-yet-created item. Returns
+    [] on any failure (network, timeout, bad response) so the caller never
+    breaks because ai-tagging is unavailable."""
     try:
-        payload = json.dumps({
-            "item_id":   item.id,
-            "name":      item.name,
-            "image_url": item.image,
-        }).encode()
+        payload = json.dumps({"name": name, "language": language}).encode()
         req = _urllib_request.Request(
             f"{AI_TAGGING_URL}/tag",
             data=payload,
@@ -644,19 +641,26 @@ def create_item():
     db.session.add(item)
     db.session.flush()
 
-    manual_tags = data.get("tags", [])
-    for tag_name in manual_tags:
+    for tag_name in data.get("tags", []):
         db.session.add(Tag(name=tag_name, item_id=item.id))
 
     log_change("item", item.id, "created", user_display, ws_id)
     db.session.commit()
-
-    for tag_name in fetch_ai_tags(item):
-        if tag_name not in manual_tags:
-            db.session.add(Tag(name=tag_name, item_id=item.id))
-    db.session.commit()
-
     return jsonify(item.to_dict()), 201
+
+
+@app.route("/api/items/suggest-tags", methods=["GET"])
+def suggest_tags():
+    err = _check_role("contributor", "manager", "admin")
+    if err:
+        return err
+
+    name = request.args.get("name", "").strip()
+    if not name:
+        abort(400, description="'name' query parameter is required")
+    language = request.args.get("language", "en")
+
+    return jsonify({"tags": fetch_ai_tags(name, language)})
 
 
 @app.route("/api/items/search", methods=["GET"])

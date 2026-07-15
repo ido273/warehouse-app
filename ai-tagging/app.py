@@ -16,18 +16,21 @@ BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 # Credentials come from the pod's IRSA-bound service account, never hardcoded.
 bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
 
-MOCK_TAGS = ["electronics", "hardware", "PC"]
+MOCK_TAGS = [
+    "electronics", "hardware", "pc", "accessory", "peripheral",
+    "gadget", "tech", "wire", "component", "device",
+]
 
 TAGGING_PROMPT = """You are a warehouse inventory tagging system.
 Given an item named '{name}' and its image,
-return exactly 5 short relevant tags in JSON format.
-Example: ["cable", "usb", "charging", "electronics", "phone"]
+return at least 10 short relevant tags in JSON format, in {language} language.
+Example: ["cable", "usb", "charging", "electronics", "phone", "accessory", "peripheral", "gadget", "tech", "wire"]
 Return ONLY the JSON array, nothing else."""
 
 TEXT_ONLY_PROMPT = """You are a warehouse inventory tagging system.
 Given an item named '{name}' (no image available),
-return exactly 5 short relevant tags in JSON format.
-Example: ["cable", "usb", "charging", "electronics", "phone"]
+return at least 10 short relevant tags in JSON format, in {language} language.
+Example: ["cable", "usb", "charging", "electronics", "phone", "accessory", "peripheral", "gadget", "tech", "wire"]
 Return ONLY the JSON array, nothing else."""
 
 
@@ -41,7 +44,7 @@ def _fetch_image(image_url):
 def _invoke_bedrock(content):
     body = {
         "messages": [{"role": "user", "content": content}],
-        "inferenceConfig": {"maxTokens": 200},
+        "inferenceConfig": {"maxTokens": 300},
     }
 
     response = bedrock.invoke_model(
@@ -61,7 +64,7 @@ def _invoke_bedrock(content):
     return tags
 
 
-def generate_tags(name, image_url):
+def generate_tags(name, image_url, language="en"):
     try:
         if image_url:
             image_b64, media_type = _fetch_image(image_url)
@@ -73,10 +76,10 @@ def generate_tags(name, image_url):
                         "source": {"bytes": image_b64},
                     }
                 },
-                {"text": TAGGING_PROMPT.format(name=name)},
+                {"text": TAGGING_PROMPT.format(name=name, language=language)},
             ]
         else:
-            content = [{"text": TEXT_ONLY_PROMPT.format(name=name)}]
+            content = [{"text": TEXT_ONLY_PROMPT.format(name=name, language=language)}]
 
         return _invoke_bedrock(content)
     except Exception:
@@ -89,11 +92,15 @@ def tag_item():
     data = request.get_json(silent=True) or {}
     name = data.get("name")
     image_url = data.get("image_url")
+    language = data.get("language") or "en"
 
     if not name:
         return jsonify({"error": "name is required"}), 400
 
-    return jsonify({"item_id": data.get("item_id"), "tags": generate_tags(name, image_url)})
+    return jsonify({
+        "item_id": data.get("item_id"),
+        "tags": generate_tags(name, image_url, language),
+    })
 
 
 @app.route("/health")
