@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import os
 
 import boto3
 import requests
@@ -9,8 +10,8 @@ from flask import Flask, jsonify, request
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
 
-BEDROCK_REGION = "eu-west-1"
-BEDROCK_MODEL_ID = "amazon.nova-lite-v1:0"
+BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "eu-west-1")
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 
 # Credentials come from the pod's IRSA-bound service account, never hardcoded.
 bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
