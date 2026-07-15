@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ text_dir }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -182,23 +182,48 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(124,106,247,0.25); border-radius: 3px; }
+
+    .lang-toggle {
+      position: fixed;
+      top: 1rem;
+      inset-inline-end: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .lang-toggle i { color: var(--muted); font-size: 0.78rem; }
+    .lang-toggle a { color: var(--muted); text-decoration: none; padding: 0.1rem 0.3rem; border-radius: 6px; }
+    .lang-toggle a.active { color: var(--accent); cursor: default; }
+    .lang-toggle a:not(.active):hover { color: var(--text); }
   </style>
 </head>
 <body>
+  <div class="lang-toggle">
+    <i class="fa-solid fa-globe"></i>
+    <a href="/set-language/en" class="{{ 'active' if lang == 'en' }}">EN</a>
+    /
+    <a href="/set-language/he" class="{{ 'active' if lang == 'he' }}">עב</a>
+  </div>
   <div class="wrap">
     <a href="/" class="logo">
       <i class="fa-solid fa-warehouse"></i>
       WarehouseMS
     </a>
-    <p class="page-sub">Every inventory lives in a workspace. Create one or join an existing team.</p>
+    <p class="page-sub">{{ t.onboarding_sub }}</p>
 
     <!-- Create workspace -->
     <div class="card">
       <div class="card-header">
         <div class="card-icon"><i class="fa-solid fa-building-circle-check"></i></div>
         <div>
-          <div class="card-title">Create a new workspace</div>
-          <div class="card-desc">Start fresh — you'll be the admin</div>
+          <div class="card-title">{{ t.create_workspace_title }}</div>
+          <div class="card-desc">{{ t.create_workspace_desc }}</div>
         </div>
       </div>
 
@@ -210,21 +235,21 @@
 
       <form method="post" action="/onboarding/create">
         <div class="form-group">
-          <label class="form-label" for="ws-name">Workspace name</label>
+          <label class="form-label" for="ws-name">{{ t.workspace_name_label }}</label>
           <div class="form-input-wrap">
             <i class="fa-solid fa-building"></i>
             <input class="form-input" type="text" id="ws-name" name="name"
-                   placeholder="e.g. Main Warehouse" required autocomplete="off">
+                   placeholder="{{ t.workspace_name_placeholder }}" required autocomplete="off">
           </div>
         </div>
         <button class="btn btn-primary" type="submit">
-          <i class="fa-solid fa-plus"></i> Create Workspace
+          <i class="fa-solid fa-plus"></i> {{ t.create_workspace_btn }}
         </button>
       </form>
     </div>
 
     <div class="divider-row">
-      <hr><span>or join an existing one</span><hr>
+      <hr><span>{{ t.or_join_existing }}</span><hr>
     </div>
 
     <!-- Join workspace -->
@@ -232,8 +257,8 @@
       <div class="card-header">
         <div class="card-icon"><i class="fa-solid fa-people-group"></i></div>
         <div>
-          <div class="card-title">Join with an invite code</div>
-          <div class="card-desc">Ask your team admin for the 8-character code</div>
+          <div class="card-title">{{ t.join_workspace_title }}</div>
+          <div class="card-desc">{{ t.join_workspace_desc }}</div>
         </div>
       </div>
 
@@ -245,7 +270,7 @@
 
       <form method="post" action="/onboarding/join">
         <div class="form-group">
-          <label class="form-label" for="invite-code">Invite code</label>
+          <label class="form-label" for="invite-code">{{ t.invite_code_label }}</label>
           <div class="form-input-wrap">
             <i class="fa-solid fa-key"></i>
             <input class="form-input" type="text" id="invite-code" name="invite_code"
@@ -254,13 +279,13 @@
           </div>
         </div>
         <button class="btn btn-outline" type="submit">
-          <i class="fa-solid fa-right-to-bracket"></i> Join Workspace
+          <i class="fa-solid fa-right-to-bracket"></i> {{ t.join_workspace_btn }}
         </button>
       </form>
     </div>
 
     <p class="skip-link">
-      Already set up? <a href="/">Go to dashboard</a>
+      {{ t.already_set_up }} <a href="/">{{ t.go_to_dashboard }}</a>
     </p>
   </div>
 </body>

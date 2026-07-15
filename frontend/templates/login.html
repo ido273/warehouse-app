@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ text_dir }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -163,9 +163,34 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(124,106,247,0.25); border-radius: 3px; }
+
+    .lang-toggle {
+      position: fixed;
+      top: 1rem;
+      inset-inline-end: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .lang-toggle i { color: var(--muted); font-size: 0.78rem; }
+    .lang-toggle a { color: var(--muted); text-decoration: none; padding: 0.1rem 0.3rem; border-radius: 6px; }
+    .lang-toggle a.active { color: var(--accent); cursor: default; }
+    .lang-toggle a:not(.active):hover { color: var(--text); }
   </style>
 </head>
 <body>
+  <div class="lang-toggle">
+    <i class="fa-solid fa-globe"></i>
+    <a href="/set-language/en" class="{{ 'active' if lang == 'en' }}">EN</a>
+    /
+    <a href="/set-language/he" class="{{ 'active' if lang == 'he' }}">עב</a>
+  </div>
   <div class="auth-wrap">
     <a href="/" class="auth-logo">
       <i class="fa-solid fa-warehouse"></i>
@@ -173,13 +198,13 @@
     </a>
 
     <div class="auth-card">
-      <div class="auth-title">Welcome back</div>
-      <div class="auth-sub">Sign in to your account to continue</div>
+      <div class="auth-title">{{ t.welcome_back }}</div>
+      <div class="auth-sub">{{ t.sign_in_sub }}</div>
 
       {% if registered %}
       <div class="alert alert-success">
         <i class="fa-solid fa-circle-check"></i>
-        Account created! You can now sign in.
+        {{ t.account_created_msg }}
       </div>
       {% endif %}
 
@@ -193,7 +218,7 @@
       <form method="post" action="/login">
         {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         <div class="form-group">
-          <label class="form-label" for="email">Email</label>
+          <label class="form-label" for="email">{{ t.email_label }}</label>
           <div class="form-input-wrap">
             <i class="fa-solid fa-envelope"></i>
             <input class="form-input" type="email" id="email" name="email"
@@ -201,7 +226,7 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label" for="password">Password</label>
+          <label class="form-label" for="password">{{ t.password_label }}</label>
           <div class="form-input-wrap">
             <i class="fa-solid fa-lock"></i>
             <input class="form-input" type="password" id="password" name="password"
@@ -210,14 +235,14 @@
         </div>
         <button class="btn-submit" type="submit">
           <i class="fa-solid fa-right-to-bracket"></i>
-          Sign In
+          {{ t.sign_in_btn }}
         </button>
       </form>
     </div>
 
     <div class="auth-footer">
-      Don't have an account?
-      <a href="/register">Create one</a>
+      {{ t.no_account_msg }}
+      <a href="/register">{{ t.create_one_link }}</a>
     </div>
   </div>
 </body>
