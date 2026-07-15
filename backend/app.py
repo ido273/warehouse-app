@@ -228,6 +228,7 @@ class Box(db.Model):
     location         = db.Column(db.String(255))
     code             = db.Column(db.String(10), unique=True, nullable=False, default="")
     image            = db.Column(db.String(255), nullable=True)
+    description      = db.Column(db.Text, nullable=True, default=None)
     is_public        = db.Column(db.Boolean, nullable=False, default=False)
     workspace_id     = db.Column(db.Integer, nullable=True, index=True)
     last_modified_by = db.Column(db.String(255), nullable=True)
@@ -242,6 +243,7 @@ class Box(db.Model):
             "name":             self.name,
             "location":         self.location,
             "image":            self.image,
+            "description":      self.description,
             "is_public":        bool(self.is_public),
             "workspace_id":     self.workspace_id,
             "last_modified_by": self.last_modified_by,
@@ -268,6 +270,7 @@ class Item(db.Model):
     code             = db.Column(db.String(10), unique=True, nullable=False, default="")
     box_id           = db.Column(db.Integer, db.ForeignKey("boxes.id"), nullable=True, index=True)
     image            = db.Column(db.String(255), nullable=True)
+    description      = db.Column(db.Text, nullable=True, default=None)
     quantity         = db.Column(db.Integer, nullable=False, default=1)
     workspace_id     = db.Column(db.Integer, nullable=True, index=True)
     last_modified_by = db.Column(db.String(255), nullable=True)
@@ -284,6 +287,7 @@ class Item(db.Model):
             "location":         self.location,
             "box_id":           self.box_id,
             "image":            self.image,
+            "description":      self.description,
             "quantity":         self.quantity if self.quantity is not None else 1,
             "workspace_id":     self.workspace_id,
             "last_modified_by": self.last_modified_by,
@@ -459,6 +463,7 @@ def create_box():
         abort(400, description="'name' is required")
     user_display = get_current_user_display_name()
     box = Box(name=name, location=data.get("location"), workspace_id=ws_id,
+              description=data.get("description"),
               is_public=bool(data.get("is_public", False)), last_modified_by=user_display)
     db.session.add(box)
     db.session.flush()
@@ -494,6 +499,11 @@ def update_box(box_id):
         if new_loc != box.location:
             changes["location"] = (box.location, new_loc)
         box.location = new_loc
+    if "description" in data:
+        new_desc = data["description"] or None
+        if new_desc != box.description:
+            changes["description"] = (box.description, new_desc)
+        box.description = new_desc
     user_display = get_current_user_display_name()
     box.last_modified_by = user_display
     if changes:
@@ -656,6 +666,7 @@ def create_item():
         category         = data.get("category"),
         location         = data.get("location"),
         box_id           = box_id,
+        description      = data.get("description"),
         quantity         = quantity,
         workspace_id     = ws_id,
         last_modified_by = user_display,
@@ -744,6 +755,11 @@ def update_item(item_id):
         if new_loc != item.location:
             changes["location"] = (item.location, new_loc)
         item.location = new_loc
+    if "description" in data:
+        new_desc = data["description"] or None
+        if new_desc != item.description:
+            changes["description"] = (item.description, new_desc)
+        item.description = new_desc
     if "box_id" in data:
         box_id = data["box_id"]
         if box_id is not None:

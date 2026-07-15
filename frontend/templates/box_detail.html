@@ -32,6 +32,9 @@
       <span><i class="fa-solid fa-pen"></i>{{ box.last_modified_by }}</span>
       {% endif %}
     </div>
+    {% if box.description %}
+    <div style="color:var(--muted);font-size:0.85rem;margin-top:0.6rem;white-space:pre-wrap;">{{ box.description }}</div>
+    {% endif %}
   </div>
 
   <div class="qr-card">
@@ -55,6 +58,7 @@
           data-type="box"
           data-id="{{ box.id }}"
           data-name="{{ box.name | e }}"
+          data-description="{{ (box.description or '') | e }}"
           data-location="{{ (box.location or '') | e }}"
           data-image="{{ box.image or '' }}"
           data-is-public="{{ 'true' if box.is_public else 'false' }}"
@@ -122,6 +126,7 @@
             data-id="{{ item.id }}"
             data-name="{{ item.name | e }}"
             data-category="{{ (item.category or '') | e }}"
+            data-description="{{ (item.description or '') | e }}"
             data-location="{{ (item.location or '') | e }}"
             data-box-id="{{ item.box_id or '' }}"
             data-tags='{{ item.tags | tojson }}'

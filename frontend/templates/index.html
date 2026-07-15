@@ -154,6 +154,7 @@
             data-type="box"
             data-id="{{ box.id }}"
             data-name="{{ box.name | e }}"
+            data-description="{{ (box.description or '') | e }}"
             data-location="{{ (box.location or '') | e }}"
             data-image="{{ box.image or '' }}"
             data-is-public="{{ 'true' if box.is_public else 'false' }}"
@@ -247,6 +248,7 @@
             data-id="{{ item.id }}"
             data-name="{{ item.name | e }}"
             data-category="{{ (item.category or '') | e }}"
+            data-description="{{ (item.description or '') | e }}"
             data-location="{{ (item.location or '') | e }}"
             data-box-id="{{ item.box_id or '' }}"
             data-tags='{{ item.tags | tojson }}'
