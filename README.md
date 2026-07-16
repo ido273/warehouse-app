@@ -38,13 +38,14 @@ Each service is independently deployed via its own Helm chart (`<service>/helm/`
 
 ## Features
 
-- **Inventory management** — boxes and items with unique codes (`B001`, `I001`), images, quantities, fast search/filter by name/tag/category/location, gallery and list views.
+- **Inventory management** — boxes and items with unique codes (`B001`, `I001`), images, an optional free-text description, quantities, fast search/filter by name/tag/category/location, gallery and list views.
 - **QR codes** — every box gets a scannable QR code linking to its (optionally public) contents.
 - **Workspaces & roles** — multiple workspaces per user, admin/manager/contributor/viewer roles, invite codes, join-request approval.
-- **AI tagging** — optional "Generate Tags" action calls `ai-tagging` (AWS Bedrock) for suggested tags based on item name/image, language-aware per workspace setting.
+- **AI tagging ("Generate Tags")** — a manual button on the create/edit item form calls `GET /api/items/suggest-tags`, which the backend forwards to `ai-tagging` (AWS Bedrock, `amazon.nova-lite-v1:0`). Suggestions render as clickable chips; nothing is tagged automatically. The prompt language (English vs. Hebrew descriptive words, with technical terms/brand names/acronyms kept in English) follows the workspace's **Tag Language** setting.
 - **Tracking** — full change history per box/item, last-modified-by tracking.
 - **Export** — CSV and Excel export of inventory.
-- **Hebrew / English UI** with RTL layout support (see Known limitations for current coverage).
+- **Hebrew / English UI** with RTL layout support and a navbar language toggle (session-persisted); see Known limitations for current translation coverage.
+- **Workspace tag language preference** — each workspace has a `tag_language` (`en`/`he`) setting, editable from the Settings modal or at workspace-creation time, that drives the AI tagging prompt language above.
 
 ## The 4 microservices
 
@@ -91,7 +92,7 @@ See `.env.example` at the repo root for the full local-dev template. Summary of 
 - **auth-service**: `DATABASE_URL` (required), `JWT_SECRET_KEY` (required), `JWT_ACCESS_TOKEN_MINUTES` (default 60)
 - **ai-tagging**: `BEDROCK_REGION` (default `eu-west-1`), `BEDROCK_MODEL_ID` (default `amazon.nova-lite-v1:0`)
 
-In production, secrets (`SECRET_KEY`, `JWT_SECRET_KEY`, `DATABASE_URL`, S3 IRSA role) come from Kubernetes Secrets provisioned by `warehouse-infra` (Terraform), not from committed files.
+In production, `SECRET_KEY`/`JWT_SECRET_KEY`/`DATABASE_URL` are **not** written by Terraform anymore — they're synced into Kubernetes Secrets (`app-secrets`, `frontend-secret`, `mysql-secret`) by **External Secrets Operator (ESO)** from AWS Secrets Manager, via `ExternalSecret` manifests in `warehouse-gitops/apps/secrets/`. S3/Bedrock access uses IRSA (pod-level AWS credentials), not a secret at all. See `warehouse-infra`'s README for the full ESO flow.
 
 ## CI/CD flow
 
@@ -117,6 +118,6 @@ Adopting real GitFlow (`develop` as the integration branch, `release/*` branches
 
 - **No automated test suite.** CI lints and boots each container, then hits `/health` — there's no unit/integration test coverage.
 - **JWT revocation blocklist is in-process**, not shared (e.g. Redis) — doesn't survive a pod restart and doesn't work correctly across multiple `auth-service` replicas.
-- **Hebrew i18n coverage is partial.** Core chrome (navbar, item/box create-edit, auth pages) is translated; several content pages and admin modals still render in English regardless of language setting — see `hebrew_i18n_followup.md`.
+- **Hebrew i18n coverage is near-complete but not total.** Shared chrome, auth pages, and all content pages (home/items/detail/search/history) are translated. Still English regardless of language setting: the admin-only modals (Manage Locations, Workspace Settings member list, Pending Requests) and their toasts, and error messages that originate from the backend/auth-service itself (as opposed to frontend-generated ones, which are translated). Pluralization and relative-time strings ("3 min ago") use simplified Hebrew grammar (singular/plural split, not full dual-form agreement) — see `hebrew_i18n_followup.md`.
 - **Single environment.** Only a `production` values set exists in `warehouse-gitops` — no staging/dev environment is deployed.
 - **Local dev MySQL** uses plain root/user credentials from `.env` — fine for `docker compose`, not a pattern to carry into production.
