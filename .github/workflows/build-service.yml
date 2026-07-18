@@ -11,6 +11,11 @@ on:
         description: "Docker image tag to push"
         required: true
         type: string
+      aws-region:
+        description: AWS region
+        required: false
+        default: eu-west-1
+        type: string
     secrets:
       AWS_OIDC_ROLE_ARN:
         required: true
@@ -30,7 +35,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          aws-region: eu-west-1
+          aws-region: ${{ inputs.aws-region || 'eu-west-1' }}
 
       - name: Login to ECR
         id: login-ecr
