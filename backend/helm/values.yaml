@@ -165,6 +165,6 @@ env:
   - name: AI_TAGGING_URL
     value: "http://ai-tagging:8080"
   - name: FRONTEND_BASE_URL
-    value: "http://a255dbb8fadf141268774524221d9633-183186057.eu-west-1.elb.amazonaws.com"
+    value: "https://warehousems.online"
   - name: S3_BUCKET_NAME
     value: "warehouse-images-ido273"

@@ -99,10 +99,14 @@ In production, `SECRET_KEY`/`JWT_SECRET_KEY`/`DATABASE_URL` are **not** written 
 Three GitHub Actions workflows under `.github/workflows/`:
 
 - **`ci.yaml`** — runs on **every push, every branch**. For each of the 4 services: flake8 lint, `docker build` the image, run the container against a `mysql:8` service container with test env vars, and curl `/health`. Build + smoke-test only — nothing is pushed to a registry.
-- **`build-service.yml`** — a reusable workflow (`workflow_call`) that logs into AWS ECR and does a multi-arch `docker buildx build --platform linux/amd64,linux/arm64 ... --push` for one service. Called by `cd.yaml`, not triggered directly.
+- **`build-service.yml`** — a reusable workflow (`workflow_call`) that authenticates to AWS via **GitHub OIDC federation** (no long-lived keys) and does a multi-arch `docker buildx build --platform linux/amd64,linux/arm64 ... --push` to ECR for one service. Called by `cd.yaml`, not triggered directly.
 - **`cd.yaml`** — runs only on **push to `master`**. Builds and pushes all 4 images to ECR (tagged with the commit SHA) via `build-service.yml`, then clones `warehouse-gitops`, bumps the `tag:` field in each `envs/production/<service>-values.yaml`, and commits/pushes (with a rebase-and-retry loop to handle concurrent CD runs). ArgoCD then picks up the new tags and syncs the cluster.
 
 So: every branch gets linted and smoke-tested; only `master` triggers a real deploy, and the deploy is a two-repo handoff (this repo → `warehouse-gitops` → ArgoCD).
+
+### AWS auth: OIDC, not static keys
+
+Both `cd.yaml` and `build-service.yml` request an OIDC token (`permissions: id-token: write`) and call `aws-actions/configure-aws-credentials@v4` with `role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}` — there are no `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` secrets in the workflow anymore. The role assumed is `warehouse-github-actions-oidc`, provisioned in `warehouse-infra` (`modules/iam/github_oidc.tf`), whose trust policy only allows GitHub Actions runs from `ido273/warehouse-app` on branch `master` to assume it. Required repo secret: **`AWS_OIDC_ROLE_ARN`** (the role's ARN — see `warehouse-infra`'s `github_oidc_role_arn` output).
 
 ## Branching strategy
 
