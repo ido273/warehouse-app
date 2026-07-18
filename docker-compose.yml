@@ -38,6 +38,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      USE_S3: "false"
     volumes:
       - backend_uploads:/app/uploads
     depends_on:

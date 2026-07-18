@@ -168,3 +168,5 @@ env:
     value: "https://warehousems.online"
   - name: S3_BUCKET_NAME
     value: "warehouse-images-ido273"
+  - name: USE_S3
+    value: "true"
