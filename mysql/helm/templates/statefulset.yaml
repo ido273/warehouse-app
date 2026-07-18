@@ -18,10 +18,10 @@ spec:
           image: mysql:{{ .Values.image.tag }}
           ports:
             - containerPort: 3306
+          {{- with .Values.resources }}
           resources:
-            requests:
-              memory: 1Gi
-              cpu: 250m
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:

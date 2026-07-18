@@ -5,6 +5,11 @@ auth:
   database: "warehouse_db"
   username: "warehouse_user"
 
+resources:
+  requests:
+    memory: 1Gi
+    cpu: 250m
+
 primary:
   persistence:
     size: 1Gi
