@@ -12,10 +12,12 @@ on:
         required: true
         type: string
     secrets:
-      AWS_ACCESS_KEY_ID:
+      AWS_OIDC_ROLE_ARN:
         required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   build-and-push:
@@ -27,8 +29,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: eu-west-1
 
       - name: Login to ECR
