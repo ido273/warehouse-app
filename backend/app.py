@@ -37,6 +37,10 @@ S3_REGION      = os.environ.get("S3_REGION", "eu-west-1")
 S3_URL_PREFIX  = f"https://{S3_BUCKET_NAME}.s3.{S3_REGION}.amazonaws.com/"
 s3_client      = boto3.client("s3", region_name=S3_REGION)
 
+# USE_S3=true uploads to S3 (production); false (or unset) saves to local
+# UPLOAD_FOLDER, for docker-compose local dev without AWS credentials.
+USE_S3 = os.environ.get('USE_S3', 'false').lower() == 'true'
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
@@ -48,11 +52,19 @@ def upload_to_s3(file, prefix):
     safe_name = secure_filename(file.filename or "upload")
     parts     = safe_name.rsplit(".", 1)
     ext       = parts[1].lower() if len(parts) == 2 else "jpg"
-    key       = f"images/{uuid.uuid4()}.{ext}"
-    s3_client.upload_fileobj(file, S3_BUCKET_NAME, key)
-    url = f"{S3_URL_PREFIX}{key}"
-    print(f"[upload] uploaded → {url}", flush=True)
-    return url
+    filename  = f"{uuid.uuid4()}.{ext}"
+
+    if USE_S3:
+        key = f"images/{filename}"
+        s3_client.upload_fileobj(file, S3_BUCKET_NAME, key)
+        url = f"{S3_URL_PREFIX}{key}"
+        print(f"[upload] uploaded → {url}", flush=True)
+        return url
+    else:
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(path)
+        print(f"[upload] saved locally → {path}", flush=True)
+        return filename
 
 
 def remove_file(filename):
@@ -426,12 +438,13 @@ def health():
 # Static uploads
 # ---------------------------------------------------------------------------
 
-@app.route("/uploads/<path:filename>")
-def serve_upload(filename):
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(path):
-        abort(404)
-    return send_from_directory(UPLOAD_FOLDER, filename)
+if not USE_S3:
+    @app.route("/uploads/<path:filename>")
+    def serve_upload(filename):
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        if not os.path.exists(path):
+            abort(404)
+        return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 # ---------------------------------------------------------------------------

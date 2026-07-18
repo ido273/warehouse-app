@@ -168,3 +168,5 @@ env:
     value: "http://a255dbb8fadf141268774524221d9633-183186057.eu-west-1.elb.amazonaws.com"
   - name: S3_BUCKET_NAME
     value: "warehouse-images-ido273"
+  - name: USE_S3
+    value: "true"
