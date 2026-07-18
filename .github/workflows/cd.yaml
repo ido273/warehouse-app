@@ -18,6 +18,7 @@ jobs:
     with:
       service: ${{ matrix.service }}
       image-tag: ${{ github.sha }}
+      aws-region: eu-west-1
     secrets:
       AWS_OIDC_ROLE_ARN: ${{ secrets.AWS_OIDC_ROLE_ARN }}
 
